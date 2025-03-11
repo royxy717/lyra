@@ -1,0 +1,258 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: rgb(20, 20, 30);
+  color: white;
+  overflow: hidden; /* 防止出现滚动条 */
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+/* 可视化组件样式 */
+.pillar-visualizer {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+}
+
+/* 3D柱状图可视化组件样式 */
+.pillar-visualizer-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.visualizer-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.error-message,
+.loading-message {
+  color: white;
+  text-align: center;
+  font-size: 1.5rem;
+  padding: 2rem;
+}
+
+.error-message p,
+.loading-message p {
+  margin: 0.5rem 0;
+}
+
+/* App样式 */
+.app {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(20, 20, 30);
+  color: white;
+  overflow: hidden;
+  position: relative;
+}
+
+.main-content {
+  flex: 1;
+  position: relative;
+}
+
+.app-header {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  background-color: rgba(20, 20, 30, 0.7);
+  padding: 20px 40px;
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 3.5rem;
+  color: #f0f0f0;
+  white-space: nowrap;
+  letter-spacing: 0.1em;
+}
+
+.app-header p {
+  margin: 10px 0 0;
+  font-size: 1.2rem;
+  color: #b0b0b0;
+  white-space: nowrap;
+}
+
+/* 控制面板样式 */
+.control-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 200px;
+  background-color: rgba(30, 30, 40, 0.85);
+  border-radius: 12px;
+  padding: 12px;
+  color: white;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.source-selector h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.source-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.source-button {
+  flex: 1;
+  padding: 6px;
+  background-color: rgba(60, 60, 70, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.source-button:hover:not(:disabled) {
+  background-color: rgba(80, 80, 90, 0.8);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.source-button.active {
+  background-color: rgba(74, 107, 175, 0.6);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.source-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.file-info {
+  margin-top: 8px;
+}
+
+.file-name {
+  font-size: 0.8rem;
+  word-break: break-all;
+  margin-bottom: 6px;
+  opacity: 0.9;
+}
+
+.play-pause-button {
+  width: 100%;
+  padding: 6px;
+  background-color: rgba(74, 107, 175, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.play-pause-button:hover:not(:disabled) {
+  background-color: rgba(90, 123, 191, 0.8);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.play-pause-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading-indicator {
+  margin-top: 10px;
+  font-style: italic;
+  color: #aaa;
+}
+
+.instructions {
+  margin-top: 15px;
+  font-size: 0.8rem;
+  color: #ccc;
+}
+
+.instructions p {
+  margin: 5px 0;
+}

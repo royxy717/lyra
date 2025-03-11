@@ -1,0 +1,102 @@
+.single-pillar-page {
+  width: 100%;
+  height: 100vh;
+  background-color: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: white;
+  font-family: Arial, sans-serif;
+  overflow: auto;
+  padding: 20px;
+}
+
+.pillars-container {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.pillar-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pillar-wrapper h3 {
+  margin-bottom: 10px;
+  color: #00AAFF;
+}
+
+.single-pillar-container {
+  width: 400px;
+  height: 400px;
+  position: relative;
+  border: 1px solid #333;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.control-panel {
+  background-color: rgba(30, 30, 30, 0.8);
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 800px;
+  margin-top: 20px;
+}
+
+.control-panel h2 {
+  margin-top: 0;
+  color: #00AAFF;
+  text-align: center;
+}
+
+.control-panel p {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #ccc;
+}
+
+.control-group {
+  margin-bottom: 15px;
+}
+
+.control-group label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.control-group input[type="range"] {
+  width: 60%;
+  margin: 0 10px;
+}
+
+.control-group input[type="color"] {
+  margin-left: 10px;
+  width: 50px;
+  height: 30px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.control-group span {
+  width: 30px;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .pillars-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .single-pillar-container {
+    width: 300px;
+    height: 300px;
+  }
+} 

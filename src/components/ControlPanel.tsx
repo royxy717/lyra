@@ -6,10 +6,11 @@ interface ControlPanelProps {
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange }) => {
-  const [audioSource, setAudioSource] = useState<'mic' | 'file' | 'demo'>('mic');
+  const [audioSource, setAudioSource] = useState<'none' | 'mic' | 'file' | 'demo'>('none');
   const [isLoading, setIsLoading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // 检查播放状态
@@ -24,8 +25,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange }) => {
     // 设置定时器定期检查
     const intervalId = setInterval(checkPauseStatus, 500);
     
+    // 组件卸载时清理
     return () => {
       clearInterval(intervalId);
+      // 清理音频分析器
+      audioAnalyzer.cleanup();
     };
   }, []);
   
@@ -34,12 +38,22 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange }) => {
     if (audioSource === 'mic') return;
     
     setIsLoading(true);
+    setError(null);
     try {
       // 清理当前音频分析器
       audioAnalyzer.cleanup();
       
+      // 先请求麦克风权限
+      const hasPermission = await audioAnalyzer.requestMicrophonePermission();
+      if (!hasPermission) {
+        throw new Error('无法获取麦克风权限');
+      }
+
       // 初始化麦克风
-      await audioAnalyzer.initialize();
+      const success = await audioAnalyzer.initialize();
+      if (!success) {
+        throw new Error('无法初始化麦克风');
+      }
       
       setAudioSource('mic');
       setFileName(null);
@@ -47,6 +61,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange }) => {
       onSourceChange();
     } catch (error) {
       console.error('切换到麦克风时出错:', error);
+      setError('无法访问麦克风，请确保已授予权限');
+      setAudioSource('none');
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +77,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange }) => {
     setFileName(file.name);
     
     setIsLoading(true);
+    setError(null);
     try {
       // 清理当前音频分析器
       audioAnalyzer.cleanup();
@@ -69,13 +86,18 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange }) => {
       const fileUrl = URL.createObjectURL(file);
       
       // 初始化音频文件
-      await audioAnalyzer.initializeWithAudio(fileUrl);
+      const success = await audioAnalyzer.initializeWithAudio(fileUrl);
+      if (!success) {
+        throw new Error('无法加载音频文件');
+      }
       
       setAudioSource('file');
       setIsPaused(false);
       onSourceChange();
     } catch (error) {
       console.error('加载音频文件时出错:', error);
+      setError('无法加载音频文件');
+      setAudioSource('none');
     } finally {
       setIsLoading(false);
     }
@@ -86,13 +108,13 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange }) => {
     if (audioSource === 'demo') return;
     
     setIsLoading(true);
+    setError(null);
     try {
       // 清理当前音频分析器
       audioAnalyzer.cleanup();
       
-      // 初始化示例音频 - 使用public目录中的demo_music.mp3文件
+      // 初始化示例音频
       const success = await audioAnalyzer.initializeWithAudio('/demo_music.mp3');
-      
       if (!success) {
         throw new Error('无法加载示例音频文件');
       }
@@ -103,7 +125,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange }) => {
       onSourceChange();
     } catch (error) {
       console.error('加载示例音频时出错:', error);
-      alert('无法加载示例音频文件。请确保demo_music.mp3文件存在于public目录中。');
+      setError('无法加载示例音频文件');
+      setAudioSource('none');
     } finally {
       setIsLoading(false);
     }
@@ -161,6 +184,12 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange }) => {
             onChange={handleFileUpload}
           />
         </div>
+        
+        {error && (
+          <div className="error-message">
+            {error}
+          </div>
+        )}
         
         {(audioSource === 'file' || audioSource === 'demo') && fileName && (
           <div className="file-info">

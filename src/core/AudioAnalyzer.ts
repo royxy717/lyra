@@ -9,6 +9,7 @@ export class AudioAnalyzer {
   private source: MediaStreamAudioSourceNode | MediaElementAudioSourceNode | null = null;
   private isInitialized: boolean = false;
   private audioElement: HTMLAudioElement | null = null;
+  private microphoneStream: MediaStream | null = null;
 
   // FFT大小，必须是2的幂，决定了频谱的精度
   private fftSize: number = 2048;
@@ -24,11 +25,31 @@ export class AudioAnalyzer {
   private isPaused: boolean = false;
 
   /**
+   * 请求麦克风权限
+   * @returns 是否成功获取权限
+   */
+  async requestMicrophonePermission(): Promise<boolean> {
+    try {
+      // 获取麦克风权限
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      this.microphoneStream = stream;
+      return true;
+    } catch (error) {
+      console.error('获取麦克风权限时出错:', error);
+      return false;
+    }
+  }
+
+  /**
    * 初始化音频分析器（使用麦克风）
    * @returns 是否成功初始化
    */
   async initialize(): Promise<boolean> {
     try {
+      if (!this.microphoneStream) {
+        return false;
+      }
+
       // 创建音频上下文
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       
@@ -36,11 +57,8 @@ export class AudioAnalyzer {
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = this.fftSize;
       
-      // 获取麦克风权限
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      
       // 创建音频源
-      this.source = this.audioContext.createMediaStreamSource(stream);
+      this.source = this.audioContext.createMediaStreamSource(this.microphoneStream);
       this.source.connect(this.analyser);
       
       // 创建数据数组
@@ -210,6 +228,11 @@ export class AudioAnalyzer {
     
     if (this.audioContext) {
       this.audioContext.close();
+    }
+
+    if (this.microphoneStream) {
+      this.microphoneStream.getTracks().forEach(track => track.stop());
+      this.microphoneStream = null;
     }
     
     this.isInitialized = false;

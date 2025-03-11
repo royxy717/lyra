@@ -177,46 +177,56 @@ button:focus-visible {
 /* 小屏幕样式 */
 @media (max-width: 767px) {
   .control-panel {
+    position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     top: auto;
     width: 100%;
     border-radius: 12px 12px 0 0;
-    padding: 12px 16px;
+    padding: 8px 12px;
+    margin: 0;
   }
 
   .source-selector {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
   }
 
   .source-selector h3 {
     margin: 0;
     white-space: nowrap;
-    min-width: 60px;
+    min-width: auto;
+    font-size: 0.9rem;
   }
 
   .source-buttons {
     flex: 1;
-    margin-bottom: 0;
-    min-width: 200px;
+    margin: 0;
+    min-width: 0;
+    display: flex;
+    gap: 6px;
+  }
+
+  .source-button {
+    padding: 4px 8px;
+    font-size: 0.85rem;
   }
 
   .file-info {
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-top: 12px;
+    gap: 8px;
+    margin-top: 8px;
   }
 
   .file-name {
     flex: 1;
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -224,9 +234,10 @@ button:focus-visible {
 
   .play-pause-button {
     width: auto;
-    min-width: 80px;
-    padding: 6px 12px;
+    min-width: 70px;
+    padding: 4px 8px;
     margin-left: auto;
+    font-size: 0.85rem;
   }
 
   .instructions {
@@ -234,7 +245,15 @@ button:focus-visible {
   }
 
   .loading-indicator {
-    margin: 8px 0 0 0;
+    margin: 6px 0 0 0;
+    font-size: 0.85rem;
+  }
+
+  .source-selector .error-message {
+    width: 100%;
+    order: 1;
+    margin-top: 6px;
+    font-size: 0.85rem;
   }
 }
 
@@ -325,4 +344,11 @@ button:focus-visible {
 
 .instructions p {
   margin: 5px 0;
+}
+
+.source-selector .error-message {
+  color: #ff6b6b;
+  font-size: 0.9rem;
+  margin-top: 8px;
+  text-align: center;
 }

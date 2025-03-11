@@ -7,7 +7,7 @@ const App: React.FC = () => {
     <div className="app">
       <header className="app-header">
         <h1>弦歌 | Lyra</h1>
-        <p>一个以建筑方法诠释音乐的可视化玩具</p>
+        <p>尽情探索音乐的建筑之美</p>
       </header>
       <div className="main-content">
         <TopFacePillarVisualizer />

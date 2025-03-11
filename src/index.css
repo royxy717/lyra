@@ -70,43 +70,6 @@ button:focus-visible {
   }
 }
 
-/* 可视化组件样式 */
-.pillar-visualizer {
-  width: 100%;
-  height: 100vh;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 3D柱状图可视化组件样式 */
-.pillar-visualizer-container {
-  flex: 1;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.visualizer-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.error-message,
-.loading-message {
-  color: white;
-  text-align: center;
-  font-size: 1.5rem;
-  padding: 2rem;
-}
-
-.error-message p,
-.loading-message p {
-  margin: 0.5rem 0;
-}
-
 /* App样式 */
 .app {
   width: 100%;
@@ -119,24 +82,9 @@ button:focus-visible {
   position: relative;
 }
 
-.main-content {
-  flex: 1;
-  position: relative;
-}
-
 .app-header {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
   text-align: center;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  background-color: rgba(20, 20, 30, 0.7);
-  padding: 20px 40px;
-  border-radius: 15px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .app-header h1 {
@@ -157,6 +105,9 @@ button:focus-visible {
 /* 控制面板样式 */
 .control-panel {
   position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 200px;
   background-color: rgba(30, 30, 40, 0.95);
   color: white;
   z-index: 100;
@@ -167,16 +118,23 @@ button:focus-visible {
   border-radius: 12px;
 }
 
-/* 默认样式（大屏幕） */
-@media (min-width: 768px) {
-  .control-panel {
-    top: 20px;
-    right: 20px;
-    width: 200px;
-  }
+/* 可视化容器样式 */
+.pillar-visualizer-container {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-/* 小屏幕样式 */
+.pillar-visualizer-container canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 移动端样式 */
 @media (max-width: 767px) {
   .app-header {
     top: 10px;
@@ -206,82 +164,8 @@ button:focus-visible {
     -webkit-overflow-scrolling: touch;
   }
 
-  .source-selector {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    padding: 0 4px;
-  }
-
-  .source-selector h3 {
-    margin: 0;
-    white-space: nowrap;
-    min-width: auto;
-    font-size: 0.9rem;
-  }
-
-  .source-buttons {
-    flex: 1;
-    margin: 0;
-    min-width: 0;
-    display: flex;
-    gap: 6px;
-  }
-
-  .source-button {
-    flex: 1;
-    min-width: 0;
-    padding: 6px 8px;
-    font-size: 0.85rem;
-    white-space: nowrap;
-  }
-
-  .file-info {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 8px;
-    padding: 0 4px;
-  }
-
-  .file-name {
-    flex: 1;
-    margin: 0;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .play-pause-button {
-    width: auto;
-    min-width: 70px;
-    padding: 6px 12px;
-    margin-left: auto;
-    font-size: 0.85rem;
-  }
-
-  .instructions {
-    display: none;
-  }
-
-  .loading-indicator {
-    margin: 6px 0 0 0;
-    font-size: 0.85rem;
-    text-align: center;
-  }
-
-  .source-selector .error-message {
-    width: 100%;
-    order: 1;
-    margin-top: 6px;
-    font-size: 0.85rem;
-    text-align: center;
-    padding: 6px;
-    background-color: rgba(255, 0, 0, 0.1);
-    border-radius: 4px;
+  .pillar-visualizer-container {
+    padding-bottom: 40vh;
   }
 }
 
@@ -393,8 +277,270 @@ button:focus-visible {
   object-fit: contain;
 }
 
-@media (max-width: 767px) {
-  .pillar-visualizer-container {
-    padding-bottom: 40vh; /* 为控制面板留出空间 */
+/* 竖屏样式 - 仅在移动设备上生效 */
+@media only screen and (max-width: 767px) and (orientation: portrait) {
+  .app {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
   }
+
+  .app-header {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    z-index: 100;
+  }
+
+  .app-header h1 {
+    font-size: 1.6rem;
+    margin: 0;
+  }
+
+  .app-header p {
+    font-size: 0.85rem;
+    margin: 4px 0 0;
+  }
+
+  .pillar-visualizer-container {
+    width: 216vw;
+    height: 216vw;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 0;
+    margin-bottom: 25vh;
+    top: -5vh;
+  }
+
+  .control-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    border-radius: 12px 12px 0 0;
+    padding: 6px 12px 8px;
+    margin: 0;
+    height: 25vh;
+    background-color: rgba(30, 30, 40, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 1000;
+    display: grid;
+    grid-template-rows: auto auto auto;
+    gap: 4px;
+  }
+
+  .source-selector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    padding: 0;
+  }
+
+  .source-selector h3 {
+    margin: 0;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 2px 0;
+    width: 100%;
+  }
+
+  .source-buttons {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 4px;
+    margin: 2px 0;
+    padding: 0;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .source-button {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+  }
+
+  .file-info {
+    margin: 2px 0;
+    padding: 2px 0;
+    font-size: 0.8rem;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .play-pause-button {
+    width: 100%;
+    max-width: 180px;
+    margin: 2px auto;
+    padding: 6px;
+    font-size: 0.8rem;
+    background-color: rgba(74, 107, 175, 0.9);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .instructions {
+    font-size: 0.7rem;
+    margin: 2px 0 0;
+    opacity: 0.8;
+    text-align: center;
+    padding: 4px 8px;
+    background-color: rgba(20, 20, 30, 0.95);
+    border-radius: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.2;
+  }
+}
+
+/* 横屏样式 - 使用更高优先级的选择器 */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  .app {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
+  }
+
+  .pillar-visualizer-container {
+    grid-column: 1;
+    width: calc(100vw - 220px);
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    transform: scale(1.4) translateX(-15%);
+    transform-origin: left center;
+  }
+
+  .app-header {
+    position: fixed;
+    top: 10px;
+    right: 0;
+    width: 220px;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: transparent;
+    z-index: 1000;
+    padding: 0;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .app-header h1 {
+    font-size: 1.8rem;
+    margin: 0;
+    padding: 0;
+    line-height: 1.2;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  .app-header p {
+    display: block;
+    font-size: 0.85rem;
+    margin: 4px 0 0;
+    color: rgba(255, 255, 255, 0.8);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+  }
+
+  .control-panel {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 220px;
+    background-color: rgba(20, 20, 30, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 0;
+    margin-top: 80px;
+    max-height: calc(100vh - 100px);
+  }
+
+  .source-selector h3 {
+    font-size: 0.8rem;
+    margin: 0 0 8px;
+    color: #f0f0f0;
+    text-align: center;
+  }
+
+  .source-buttons {
+    display: flex;
+    gap: 4px;
+    margin: 0;
+    justify-content: center;
+  }
+
+  .source-button {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    min-height: 24px;
+    background-color: rgba(40, 40, 50, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+
+  .source-button.active {
+    background-color: rgba(60, 60, 70, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .file-info {
+    margin: 8px 0;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  .play-pause-button {
+    width: 100%;
+    padding: 6px;
+    font-size: 0.75rem;
+    background-color: rgba(60, 80, 120, 0.8);
+    border-radius: 4px;
+    margin: 4px 0;
+    text-align: center;
+  }
+
+  .instructions {
+    font-size: 0.7rem;
+    margin: 4px 0 0;
+    color: #888;
+    line-height: 1.3;
+    text-align: center;
+  }
+}
+
+/* 确保canvas在所有方向都保持合适的宽高比 */
+.pillar-visualizer-container canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }

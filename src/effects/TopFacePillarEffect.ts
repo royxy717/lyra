@@ -834,16 +834,28 @@ export class TopFacePillarEffect {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
 
-    // 计算合适的视口大小，保持宽高比
+    // 检测屏幕方向
+    const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+
+    // 计算合适的视口大小
     let viewWidth = width;
     let viewHeight = height;
 
-    // 在移动设备上，如果高度大于宽度，调整视口大小
-    if (height > width) {
+    if (isPortrait) {
+      // 竖屏模式：放大1.5倍，允许裁切
       viewHeight = width * 0.8; // 保持宽高比为 1.25:1
+      // 调整相机视角以适应更大的显示区域
+      this.camera.position.set(0, -95, 110); // 调整相机位置以适应放大的视图
+      this.camera.fov = 42; // 减小视场角以获得更好的视觉效果
+    } else {
+      // 横屏模式：填充主要区域
+      viewHeight = height;
+      // 恢复默认相机位置和视场角
+      this.camera.position.set(0, -70, 80);
+      this.camera.fov = 45;
     }
 
-    // 更新相机宽高比
+    // 更新相机宽高比和投影矩阵
     this.camera.aspect = viewWidth / viewHeight;
     this.camera.updateProjectionMatrix();
 

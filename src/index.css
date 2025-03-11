@@ -75,15 +75,17 @@ button:focus-visible {
   width: 100%;
   height: 100vh;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 3D柱状图可视化组件样式 */
 .pillar-visualizer-container {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
+  flex: 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .visualizer-canvas {
@@ -155,7 +157,7 @@ button:focus-visible {
 /* 控制面板样式 */
 .control-panel {
   position: fixed;
-  background-color: rgba(30, 30, 40, 0.85);
+  background-color: rgba(30, 30, 40, 0.95);
   color: white;
   z-index: 100;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -176,16 +178,32 @@ button:focus-visible {
 
 /* 小屏幕样式 */
 @media (max-width: 767px) {
+  .app-header {
+    top: 10px;
+    padding: 10px 20px;
+  }
+
+  .app-header h1 {
+    font-size: 2rem;
+  }
+
+  .app-header p {
+    font-size: 1rem;
+  }
+
   .control-panel {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     top: auto;
-    width: 100%;
+    width: auto;
     border-radius: 12px 12px 0 0;
     padding: 8px 12px;
     margin: 0;
+    max-height: 40vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .source-selector {
@@ -193,6 +211,7 @@ button:focus-visible {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
+    padding: 0 4px;
   }
 
   .source-selector h3 {
@@ -211,8 +230,11 @@ button:focus-visible {
   }
 
   .source-button {
-    padding: 4px 8px;
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
     font-size: 0.85rem;
+    white-space: nowrap;
   }
 
   .file-info {
@@ -221,6 +243,7 @@ button:focus-visible {
     align-items: center;
     gap: 8px;
     margin-top: 8px;
+    padding: 0 4px;
   }
 
   .file-name {
@@ -235,7 +258,7 @@ button:focus-visible {
   .play-pause-button {
     width: auto;
     min-width: 70px;
-    padding: 4px 8px;
+    padding: 6px 12px;
     margin-left: auto;
     font-size: 0.85rem;
   }
@@ -247,6 +270,7 @@ button:focus-visible {
   .loading-indicator {
     margin: 6px 0 0 0;
     font-size: 0.85rem;
+    text-align: center;
   }
 
   .source-selector .error-message {
@@ -254,6 +278,10 @@ button:focus-visible {
     order: 1;
     margin-top: 6px;
     font-size: 0.85rem;
+    text-align: center;
+    padding: 6px;
+    background-color: rgba(255, 0, 0, 0.1);
+    border-radius: 4px;
   }
 }
 
@@ -272,7 +300,7 @@ button:focus-visible {
 
 .source-button {
   flex: 1;
-  padding: 6px;
+  padding: 8px;
   background-color: rgba(60, 60, 70, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
@@ -280,6 +308,7 @@ button:focus-visible {
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 0.9rem;
+  min-width: 0;
 }
 
 .source-button:hover:not(:disabled) {
@@ -302,7 +331,7 @@ button:focus-visible {
 }
 
 .file-name {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   word-break: break-all;
   margin-bottom: 6px;
   opacity: 0.9;
@@ -310,7 +339,7 @@ button:focus-visible {
 
 .play-pause-button {
   width: 100%;
-  padding: 6px;
+  padding: 8px;
   background-color: rgba(74, 107, 175, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
@@ -334,6 +363,7 @@ button:focus-visible {
   margin-top: 10px;
   font-style: italic;
   color: #aaa;
+  text-align: center;
 }
 
 .instructions {
@@ -351,4 +381,20 @@ button:focus-visible {
   font-size: 0.9rem;
   margin-top: 8px;
   text-align: center;
+  padding: 8px;
+  background-color: rgba(255, 0, 0, 0.1);
+  border-radius: 6px;
+}
+
+/* 确保canvas保持合适的宽高比 */
+.pillar-visualizer-container canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+@media (max-width: 767px) {
+  .pillar-visualizer-container {
+    padding-bottom: 40vh; /* 为控制面板留出空间 */
+  }
 }

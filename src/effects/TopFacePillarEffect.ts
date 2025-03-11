@@ -93,7 +93,7 @@ export class TopFacePillarEffect {
     
     // 设置像素比和尺寸
     this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
+    this.updateRendererSize();
     
     // 激活深度测试
     this.renderer.setClearColor(0x000000, 0);
@@ -825,23 +825,37 @@ export class TopFacePillarEffect {
   }
   
   /**
-   * 窗口大小变化处理
+   * 更新渲染器尺寸
    */
-  public onWindowResize(): void {
-    try {
-      const width = this.container.clientWidth;
-      const height = this.container.clientHeight;
-      
-      this.camera.aspect = width / height;
-      this.camera.updateProjectionMatrix();
-      
-      this.renderer.setSize(width, height);
-      this.renderer.render(this.scene, this.camera);
-      
-      console.log('窗口大小已调整:', width, height);
-    } catch (error) {
-      console.error('调整窗口大小时出错:', error);
+  private updateRendererSize(): void {
+    if (!this.container || !this.camera || !this.renderer) return;
+
+    // 获取容器尺寸
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+
+    // 计算合适的视口大小，保持宽高比
+    let viewWidth = width;
+    let viewHeight = height;
+
+    // 在移动设备上，如果高度大于宽度，调整视口大小
+    if (height > width) {
+      viewHeight = width * 0.8; // 保持宽高比为 1.25:1
     }
+
+    // 更新相机宽高比
+    this.camera.aspect = viewWidth / viewHeight;
+    this.camera.updateProjectionMatrix();
+
+    // 更新渲染器尺寸
+    this.renderer.setSize(viewWidth, viewHeight);
+  }
+
+  /**
+   * 处理窗口大小变化
+   */
+  onWindowResize(): void {
+    this.updateRendererSize();
   }
   
   /**

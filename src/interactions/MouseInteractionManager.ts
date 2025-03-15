@@ -26,7 +26,7 @@ export class MouseInteractionManager {
   
   // 点击冷却机制
   private lastClickTime = 0;
-  private readonly CLICK_COOLDOWN = 500; // 毫秒
+  private readonly CLICK_COOLDOWN = 100; // 毫秒，从500减小到100
   
   // 触摸事件相关
   private lastTouchTime: number = 0;

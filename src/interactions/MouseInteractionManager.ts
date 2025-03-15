@@ -20,9 +20,13 @@ export class MouseInteractionManager {
   private readonly BULGE_FALLOFF = 2;    // 鼓包衰减指数
   
   // 爆炸效果配置
-  private readonly EXPLOSION_RADIUS = 15;    // 爆炸影响半径（网格单位）
+  private readonly EXPLOSION_RADIUS = 30;    // 增加爆炸影响半径（从15增加到30）
   private readonly EXPLOSION_STRENGTH = 1.5; // 爆炸强度
   private readonly EXPLOSION_DECAY = 0.95;   // 爆炸衰减系数
+  
+  // 点击冷却机制
+  private lastClickTime: number = 0;
+  private readonly CLICK_COOLDOWN = 500; // 点击冷却时间（毫秒）
   
   // 鼠标位置追踪
   private mouse: Vector2;
@@ -53,13 +57,25 @@ export class MouseInteractionManager {
     this.domElement.addEventListener('wheel', this.handleWheel.bind(this));
     this.domElement.addEventListener('mousemove', this.handleMouseMove.bind(this));
     this.domElement.addEventListener('mouseleave', this.handleMouseLeave.bind(this));
-    this.domElement.addEventListener('click', this.handleClick.bind(this));
+    this.domElement.addEventListener('click', this.handleClick.bind(this), { capture: true }); // 使用捕获阶段
   }
   
   /**
    * 处理鼠标点击事件
    */
   private handleClick = (event: MouseEvent): void => {
+    // 检查点击冷却时间
+    const currentTime = Date.now();
+    if (currentTime - this.lastClickTime < this.CLICK_COOLDOWN) {
+      // 如果冷却时间内，阻止事件并返回
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    
+    // 更新最后点击时间
+    this.lastClickTime = currentTime;
+    
     // 计算鼠标在归一化设备坐标中的位置
     const rect = this.domElement.getBoundingClientRect();
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -74,6 +90,10 @@ export class MouseInteractionManager {
     if (intersects) {
       // 触发爆炸效果
       this.createExplosion();
+      
+      // 阻止事件冒泡
+      event.preventDefault();
+      event.stopPropagation();
     }
   }
   

@@ -75,7 +75,7 @@ export class TopFacePillarEffect {
     maxAge: number;
     flash: THREE.Sprite | null;
   }[] = [];
-  private readonly EXPLOSION_MAX_AGE = 120; // 爆炸效果持续的帧数
+  private readonly EXPLOSION_MAX_AGE = 240; // 增加爆炸效果持续的帧数，从120增加到240
   private readonly EXPLOSION_WAVE_SPEED = 0.3; // 震荡波传播速度
   
   constructor(private container: HTMLElement) {
@@ -1459,7 +1459,7 @@ export class TopFacePillarEffect {
       const distance = worldPos.distanceTo(explosion.position);
       
       // 如果在震荡波前沿附近，添加效果
-      const waveFrontWidth = 3; // 震荡波宽度
+      const waveFrontWidth = 4; // 增加震荡波宽度（从3增加到4）
       const distFromWaveFront = Math.abs(distance - waveRadius);
       
       if (distFromWaveFront < waveFrontWidth && distance <= explosion.radius) {
@@ -1469,9 +1469,9 @@ export class TopFacePillarEffect {
         // 计算波形 - 使用正弦波
         const waveForm = Math.sin(wavePos * Math.PI);
         
-        // 计算强度衰减 - 随着距离和时间衰减
-        const distanceFactor = 1 - (distance / explosion.radius);
-        const ageFactor = 1 - (explosion.age / explosion.maxAge);
+        // 计算强度衰减 - 随着距离和时间衰减，但衰减更慢
+        const distanceFactor = 1 - Math.pow(distance / explosion.radius, 0.7); // 使用非线性衰减，减缓衰减速度
+        const ageFactor = 1 - Math.pow(explosion.age / explosion.maxAge, 0.8); // 使用非线性衰减，减缓衰减速度
         const strengthFactor = explosion.strength * distanceFactor * ageFactor;
         
         // 计算最终效果

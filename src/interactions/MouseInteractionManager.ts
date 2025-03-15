@@ -2,7 +2,7 @@ import { Scene, PerspectiveCamera, WebGLRenderer, Vector2, Raycaster, Plane, Vec
 
 /**
  * 鼠标交互管理器
- * 实现滚轮缩放和鼠标悬停鼓包效果
+ * 实现滚轮缩放、鼠标悬停鼓包效果和点击爆炸效果
  */
 export class MouseInteractionManager {
   private camera: PerspectiveCamera;
@@ -18,6 +18,11 @@ export class MouseInteractionManager {
   private readonly BULGE_RADIUS = 5;     // 鼓包影响半径（网格单位）
   private readonly BULGE_HEIGHT = 0.9;   // 增加鼓包最大高度到0.9（原来的三倍）
   private readonly BULGE_FALLOFF = 2;    // 鼓包衰减指数
+  
+  // 爆炸效果配置
+  private readonly EXPLOSION_RADIUS = 15;    // 爆炸影响半径（网格单位）
+  private readonly EXPLOSION_STRENGTH = 1.5; // 爆炸强度
+  private readonly EXPLOSION_DECAY = 0.95;   // 爆炸衰减系数
   
   // 鼠标位置追踪
   private mouse: Vector2;
@@ -48,6 +53,49 @@ export class MouseInteractionManager {
     this.domElement.addEventListener('wheel', this.handleWheel.bind(this));
     this.domElement.addEventListener('mousemove', this.handleMouseMove.bind(this));
     this.domElement.addEventListener('mouseleave', this.handleMouseLeave.bind(this));
+    this.domElement.addEventListener('click', this.handleClick.bind(this));
+  }
+  
+  /**
+   * 处理鼠标点击事件
+   */
+  private handleClick = (event: MouseEvent): void => {
+    // 计算鼠标在归一化设备坐标中的位置
+    const rect = this.domElement.getBoundingClientRect();
+    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    // 更新射线
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    
+    // 计算射线与地平面的交点
+    const intersects = this.raycaster.ray.intersectPlane(this.groundPlane, this.mouseWorldPos);
+    
+    if (intersects) {
+      // 触发爆炸效果
+      this.createExplosion();
+    }
+  }
+  
+  /**
+   * 创建爆炸效果
+   */
+  private createExplosion(): void {
+    // 获取鼠标在世界坐标中的位置
+    const mouseX = this.mouseWorldPos.x;
+    const mouseY = this.mouseWorldPos.y;
+    
+    // 发出自定义事件通知效果系统创建爆炸
+    const explosionEvent = new CustomEvent('createExplosion', {
+      detail: {
+        position: { x: mouseX, y: mouseY },
+        radius: this.EXPLOSION_RADIUS,
+        strength: this.EXPLOSION_STRENGTH,
+        decay: this.EXPLOSION_DECAY
+      }
+    });
+    
+    this.domElement.dispatchEvent(explosionEvent);
   }
   
   /**
@@ -140,5 +188,6 @@ export class MouseInteractionManager {
     this.domElement.removeEventListener('wheel', this.handleWheel);
     this.domElement.removeEventListener('mousemove', this.handleMouseMove);
     this.domElement.removeEventListener('mouseleave', this.handleMouseLeave);
+    this.domElement.removeEventListener('click', this.handleClick);
   }
 } 

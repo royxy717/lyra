@@ -58,6 +58,26 @@ export class TopFacePillarEffect {
   // 网页背景色 - 深蓝色
   private readonly backgroundColor: number = 0x171923;
   
+  // 鼓包效果相关属性
+  private bulgePosition: THREE.Vector2 | null = null;
+  private bulgeRadius: number = 0;
+  private bulgeHeight: number = 0;
+  private bulgeFalloff: number = 2;
+  private bulgeActive: boolean = false;
+  
+  // 爆炸效果相关属性
+  private explosions: {
+    position: THREE.Vector2;
+    radius: number;
+    strength: number;
+    decay: number;
+    age: number;
+    maxAge: number;
+    flash: THREE.Sprite | null;
+  }[] = [];
+  private readonly EXPLOSION_MAX_AGE = 120; // 爆炸效果持续的帧数
+  private readonly EXPLOSION_WAVE_SPEED = 0.3; // 震荡波传播速度
+  
   constructor(private container: HTMLElement) {
     console.log('正在创建TopFacePillarEffect实例');
     console.log('容器大小:', container.clientWidth, container.clientHeight);
@@ -142,6 +162,13 @@ export class TopFacePillarEffect {
     
     // 初始渲染一次，确保场景可见
     this.renderer.render(this.scene, this.camera);
+    
+    // 添加鼓包效果事件监听
+    this.container.addEventListener('updateBulge', this.handleBulgeUpdate.bind(this) as EventListener);
+    this.container.addEventListener('resetBulge', this.handleBulgeReset.bind(this) as EventListener);
+    
+    // 添加爆炸效果事件监听
+    this.container.addEventListener('createExplosion', this.handleCreateExplosion.bind(this) as EventListener);
   }
   
   /**
@@ -802,6 +829,14 @@ export class TopFacePillarEffect {
       }
       this.thrownFaces = [];
       
+      // 清理爆炸效果
+      for (const explosion of this.explosions) {
+        if (explosion.flash) {
+          this.scene.remove(explosion.flash);
+        }
+      }
+      this.explosions = [];
+      
       // 安全移除渲染器DOM元素
       if (this.renderer && this.renderer.domElement) {
         // 检查DOM元素是否确实是容器的子节点
@@ -817,6 +852,13 @@ export class TopFacePillarEffect {
       
       // 移除事件监听器
       window.removeEventListener('resize', this.onWindowResize.bind(this));
+      
+      // 移除鼓包效果事件监听
+      this.container.removeEventListener('updateBulge', this.handleBulgeUpdate.bind(this) as EventListener);
+      this.container.removeEventListener('resetBulge', this.handleBulgeReset.bind(this) as EventListener);
+      
+      // 移除爆炸效果事件监听
+      this.container.removeEventListener('createExplosion', this.handleCreateExplosion.bind(this) as EventListener);
       
       console.log('TopFacePillarEffect资源已清理');
     } catch (error) {
@@ -875,6 +917,9 @@ export class TopFacePillarEffect {
    */
   private animate(): void {
     this.animationId = requestAnimationFrame(this.animate.bind(this));
+
+    // 更新爆炸效果
+    this.updateExplosions();
 
     // 添加相机旋转动画
     const radius = Math.sqrt(this.camera.position.x * this.camera.position.x + this.camera.position.y * this.camera.position.y);
@@ -1083,6 +1128,12 @@ export class TopFacePillarEffect {
             heightValue = Math.max(waveHeight * 0.8, 0.02);
           }
           
+          // 应用鼓包效果
+          heightValue = this.applyBulgeEffect(i, j, heightValue);
+          
+          // 应用爆炸效果
+          heightValue = this.applyExplosionEffect(i, j, heightValue);
+          
           // 存储原始高度值
           rawHeights[localI][localJ] = heightValue;
         }
@@ -1214,5 +1265,224 @@ export class TopFacePillarEffect {
     } catch (error) {
       console.error('创建碰撞光晕效果时出错:', error);
     }
+  }
+
+  public getScene(): THREE.Scene {
+    return this.scene;
+  }
+
+  public getCamera(): THREE.PerspectiveCamera {
+    return this.camera;
+  }
+
+  public getRenderer(): THREE.WebGLRenderer {
+    return this.renderer;
+  }
+
+  /**
+   * 处理鼓包更新事件
+   */
+  private handleBulgeUpdate(event: CustomEvent): void {
+    const { position, radius, height, falloff } = event.detail;
+    this.bulgePosition = new THREE.Vector2(position.x, position.y);
+    this.bulgeRadius = radius;
+    this.bulgeHeight = height;
+    this.bulgeFalloff = falloff;
+    this.bulgeActive = true;
+  }
+  
+  /**
+   * 处理鼓包重置事件
+   */
+  private handleBulgeReset(): void {
+    this.bulgeActive = false;
+    this.bulgePosition = null;
+  }
+  
+  /**
+   * 应用鼓包效果到指定位置
+   */
+  private applyBulgeEffect(i: number, j: number, baseHeight: number): number {
+    if (!this.bulgeActive || !this.bulgePosition) return baseHeight;
+    
+    // 计算网格位置的世界坐标
+    const gridSize = 2;
+    const offset = (this.gridDimension * gridSize) / 2 - gridSize / 2;
+    const worldX = i * gridSize - offset;
+    const worldY = j * gridSize - offset;
+    
+    // 计算到鼓包中心的距离
+    const distance = new THREE.Vector2(worldX, worldY).distanceTo(this.bulgePosition);
+    
+    // 如果超出影响半径，返回原始高度
+    if (distance > this.bulgeRadius) return baseHeight;
+    
+    // 计算鼓包高度
+    const normalizedDistance = distance / this.bulgeRadius;
+    const bulgeInfluence = Math.pow(1 - normalizedDistance, this.bulgeFalloff);
+    const bulgeContribution = this.bulgeHeight * bulgeInfluence;
+    
+    return baseHeight + bulgeContribution;
+  }
+
+  /**
+   * 处理创建爆炸事件
+   */
+  private handleCreateExplosion(event: CustomEvent): void {
+    const { position, radius, strength, decay } = event.detail;
+    
+    // 创建爆炸效果
+    this.createExplosion(
+      new THREE.Vector2(position.x, position.y),
+      radius,
+      strength,
+      decay
+    );
+  }
+  
+  /**
+   * 创建爆炸效果
+   */
+  private createExplosion(
+    position: THREE.Vector2,
+    radius: number,
+    strength: number,
+    decay: number
+  ): void {
+    // 创建爆炸闪光效果
+    const flash = this.createExplosionFlash(position);
+    
+    // 添加到爆炸列表
+    this.explosions.push({
+      position,
+      radius,
+      strength,
+      decay,
+      age: 0,
+      maxAge: this.EXPLOSION_MAX_AGE,
+      flash
+    });
+    
+    console.log(`创建爆炸效果: 位置(${position.x}, ${position.y}), 半径${radius}, 强度${strength}`);
+  }
+  
+  /**
+   * 创建爆炸闪光效果
+   */
+  private createExplosionFlash(position: THREE.Vector2): THREE.Sprite {
+    // 创建闪光纹理
+    const flashTexture = this.createGlowTexture();
+    
+    // 创建闪光材质 - 使用橙色
+    const flashMaterial = new THREE.SpriteMaterial({
+      map: flashTexture,
+      color: 0xff7700, // 橙色
+      transparent: true,
+      opacity: 1.0,
+      blending: THREE.AdditiveBlending,
+      depthTest: false,
+      depthWrite: false
+    });
+    
+    // 创建闪光精灵
+    const flash = new THREE.Sprite(flashMaterial);
+    
+    // 设置位置
+    flash.position.set(position.x, position.y, 0.5); // 略微上移以避免z-fighting
+    
+    // 设置大小
+    flash.scale.set(5, 5, 1);
+    
+    // 添加到场景
+    this.scene.add(flash);
+    
+    return flash;
+  }
+  
+  /**
+   * 更新爆炸效果
+   */
+  private updateExplosions(): void {
+    for (let i = this.explosions.length - 1; i >= 0; i--) {
+      const explosion = this.explosions[i];
+      
+      // 增加年龄
+      explosion.age++;
+      
+      // 如果超过最大年龄，移除爆炸效果
+      if (explosion.age >= explosion.maxAge) {
+        // 移除闪光效果
+        if (explosion.flash) {
+          this.scene.remove(explosion.flash);
+          (explosion.flash.material as THREE.SpriteMaterial).dispose();
+        }
+        
+        // 从列表中移除
+        this.explosions.splice(i, 1);
+        continue;
+      }
+      
+      // 更新闪光效果
+      if (explosion.flash) {
+        // 计算闪光不透明度 - 快速衰减
+        const flashOpacity = Math.max(0, 1 - explosion.age / 20);
+        (explosion.flash.material as THREE.SpriteMaterial).opacity = flashOpacity;
+        
+        // 增加闪光大小
+        const scale = 5 + explosion.age * 0.2;
+        explosion.flash.scale.set(scale, scale, 1);
+      }
+    }
+  }
+  
+  /**
+   * 应用爆炸效果到指定位置
+   */
+  private applyExplosionEffect(i: number, j: number, baseHeight: number): number {
+    if (this.explosions.length === 0) return baseHeight;
+    
+    // 计算网格位置的世界坐标
+    const gridSize = 2;
+    const offset = (this.gridDimension * gridSize) / 2 - gridSize / 2;
+    const worldX = i * gridSize - offset;
+    const worldY = j * gridSize - offset;
+    const worldPos = new THREE.Vector2(worldX, worldY);
+    
+    // 累积所有爆炸的影响
+    let totalEffect = 0;
+    
+    for (const explosion of this.explosions) {
+      // 计算当前震荡波半径
+      const waveRadius = explosion.age * this.EXPLOSION_WAVE_SPEED;
+      
+      // 计算到爆炸中心的距离
+      const distance = worldPos.distanceTo(explosion.position);
+      
+      // 如果在震荡波前沿附近，添加效果
+      const waveFrontWidth = 3; // 震荡波宽度
+      const distFromWaveFront = Math.abs(distance - waveRadius);
+      
+      if (distFromWaveFront < waveFrontWidth && distance <= explosion.radius) {
+        // 计算在波前的位置 (0-1)
+        const wavePos = 1 - (distFromWaveFront / waveFrontWidth);
+        
+        // 计算波形 - 使用正弦波
+        const waveForm = Math.sin(wavePos * Math.PI);
+        
+        // 计算强度衰减 - 随着距离和时间衰减
+        const distanceFactor = 1 - (distance / explosion.radius);
+        const ageFactor = 1 - (explosion.age / explosion.maxAge);
+        const strengthFactor = explosion.strength * distanceFactor * ageFactor;
+        
+        // 计算最终效果
+        const effect = waveForm * strengthFactor;
+        
+        // 累加效果
+        totalEffect += effect;
+      }
+    }
+    
+    // 应用效果到高度
+    return baseHeight + totalEffect;
   }
 } 

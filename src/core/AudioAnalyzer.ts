@@ -2,14 +2,19 @@
  * 音频分析器类
  * 负责捕获和分析音频数据
  */
-export class AudioAnalyzer {
+import { BeatDetector } from './BeatDetector';
+
+class AudioAnalyzer {
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private dataArray: Uint8Array | null = null;
   private source: MediaStreamAudioSourceNode | MediaElementAudioSourceNode | null = null;
-  private isInitialized: boolean = false;
+  private initialized: boolean = false;
   private audioElement: HTMLAudioElement | null = null;
   private microphoneStream: MediaStream | null = null;
+  private beatDetector: BeatDetector | null = null;
+  private frequencyData: Uint8Array | null = null;
+  private silentAudio: HTMLAudioElement | null = null;
 
   // FFT大小，必须是2的幂，决定了频谱的精度
   private fftSize: number = 2048;
@@ -23,6 +28,12 @@ export class AudioAnalyzer {
   private isBeatDetected: boolean = false;
 
   private isPaused: boolean = false;
+
+  constructor() {
+    // 创建静音音频元素
+    this.silentAudio = new Audio('/audio/silent.mp3');
+    this.silentAudio.loop = true;
+  }
 
   /**
    * 请求麦克风权限
@@ -41,86 +52,64 @@ export class AudioAnalyzer {
   }
 
   /**
-   * 初始化音频分析器（使用麦克风）
-   * @returns 是否成功初始化
+   * 初始化音频分析器
    */
-  async initialize(): Promise<boolean> {
+  async initialize(): Promise<void> {
+    if (this.audioContext) {
+      console.log('AudioAnalyzer已经初始化');
+      return;
+    }
+    
     try {
-      if (!this.microphoneStream) {
-        return false;
-      }
-
       // 创建音频上下文
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       
       // 创建分析器节点
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = this.fftSize;
+      this.analyser.smoothingTimeConstant = 0.8;
       
-      // 创建音频源
-      this.source = this.audioContext.createMediaStreamSource(this.microphoneStream);
-      this.source.connect(this.analyser);
+      // 初始化频率数据数组
+      this.frequencyData = new Uint8Array(this.analyser.frequencyBinCount);
       
-      // 创建数据数组
-      const bufferLength = this.analyser.frequencyBinCount;
-      this.dataArray = new Uint8Array(bufferLength);
+      // 创建节拍检测器
+      this.beatDetector = new BeatDetector();
       
-      // 初始化节拍检测历史
-      for (let i = 0; i < this.beatEnergyHistorySize; i++) {
-        this.beatEnergyHistory.push(0);
-      }
+      // 播放静音音频并立即暂停，以激活音频上下文
+      await this.initializeSilentAudio();
       
-      this.isInitialized = true;
-      console.log('音频分析器初始化成功');
-      return true;
+      this.initialized = true;
+      console.log('AudioAnalyzer初始化成功');
     } catch (error) {
-      console.error('初始化音频分析器时出错:', error);
-      return false;
+      console.error('初始化AudioAnalyzer时出错:', error);
+      throw error;
     }
   }
   
   /**
-   * 初始化音频分析器（使用音频文件）
-   * @param audioUrl 音频文件URL
-   * @returns 是否成功初始化
+   * 初始化静音音频
    */
-  async initializeWithAudio(audioUrl: string): Promise<boolean> {
+  private async initializeSilentAudio(): Promise<void> {
+    if (!this.audioContext || !this.silentAudio || !this.analyser) return;
+    
     try {
-      // 创建音频上下文
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      // 等待音频加载
+      await this.silentAudio.load();
       
-      // 创建分析器节点
-      this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = this.fftSize;
+      // 创建媒体源节点
+      const silentSource = this.audioContext.createMediaElementSource(this.silentAudio);
+      silentSource.connect(this.analyser);
+      this.analyser.connect(this.audioContext.destination);
       
-      // 创建音频元素
-      this.audioElement = new Audio();
-      this.audioElement.src = audioUrl;
-      this.audioElement.loop = true;
+      // 播放并立即暂停
+      await this.silentAudio.play();
+      this.silentAudio.pause();
       
-      // 创建音频源
-      this.source = this.audioContext.createMediaElementSource(this.audioElement);
-      this.source.connect(this.analyser);
-      this.analyser.connect(this.audioContext.destination); // 连接到输出，这样可以听到声音
+      // 保存源节点引用
+      this.source = silentSource;
       
-      // 播放音频
-      await this.audioElement.play();
-      
-      // 创建数据数组
-      const bufferLength = this.analyser.frequencyBinCount;
-      this.dataArray = new Uint8Array(bufferLength);
-      
-      // 初始化节拍检测历史
-      for (let i = 0; i < this.beatEnergyHistorySize; i++) {
-        this.beatEnergyHistory.push(0);
-      }
-      
-      this.isInitialized = true;
-      console.log('音频分析器初始化成功（使用音频文件）');
-      return true;
     } catch (error) {
-      console.error('初始化音频分析器时出错:', error);
-      return false;
+      console.error('初始化静音音频时出错:', error);
     }
   }
 
@@ -129,16 +118,10 @@ export class AudioAnalyzer {
    * @returns 频率数据数组
    */
   getFrequencyData(): Uint8Array | null {
-    if (!this.isInitialized || !this.analyser || !this.dataArray) {
-      return null;
-    }
+    if (!this.analyser || !this.frequencyData) return null;
     
-    this.analyser.getByteFrequencyData(this.dataArray);
-    
-    // 检测节拍
-    this.detectBeat();
-    
-    return this.dataArray;
+    this.analyser.getByteFrequencyData(this.frequencyData);
+    return this.frequencyData;
   }
 
   /**
@@ -146,7 +129,7 @@ export class AudioAnalyzer {
    * @returns 时域数据数组
    */
   getTimeData(): Uint8Array | null {
-    if (!this.isInitialized || !this.analyser || !this.dataArray) {
+    if (!this.initialized || !this.analyser || !this.dataArray) {
       return null;
     }
     
@@ -159,7 +142,7 @@ export class AudioAnalyzer {
    * @returns 频率区间数量
    */
   getBufferLength(): number {
-    if (!this.isInitialized || !this.analyser) {
+    if (!this.initialized || !this.analyser) {
       return 0;
     }
     
@@ -171,7 +154,10 @@ export class AudioAnalyzer {
    * @returns 是否检测到节拍
    */
   isBeat(): boolean {
-    return this.isBeatDetected;
+    const frequencyData = this.getFrequencyData();
+    if (!frequencyData || !this.beatDetector) return false;
+    
+    return this.beatDetector.detectBeat(frequencyData);
   }
   
   /**
@@ -235,7 +221,7 @@ export class AudioAnalyzer {
       this.microphoneStream = null;
     }
     
-    this.isInitialized = false;
+    this.initialized = false;
   }
 
   /**
@@ -286,13 +272,79 @@ export class AudioAnalyzer {
    * @returns 'mic'表示麦克风，'file'表示音频文件，'none'表示未初始化
    */
   getSourceType(): 'mic' | 'file' | 'none' {
-    if (!this.isInitialized) {
+    if (!this.initialized) {
       return 'none';
     }
     
     return this.audioElement ? 'file' : 'mic';
   }
+
+  /**
+   * 切换到麦克风输入
+   */
+  async switchToMicrophone(): Promise<void> {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      if (!this.audioContext || !this.analyser) {
+        throw new Error('AudioAnalyzer未初始化');
+      }
+      
+      // 断开当前源
+      if (this.source) {
+        this.source.disconnect();
+      }
+      
+      // 创建新的麦克风源
+      this.source = this.audioContext.createMediaStreamSource(stream);
+      this.source.connect(this.analyser);
+      
+    } catch (error) {
+      console.error('切换到麦克风输入时出错:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * 切换到音频文件
+   */
+  async switchToAudioFile(audioUrl: string): Promise<void> {
+    try {
+      if (!this.audioContext || !this.analyser) {
+        throw new Error('AudioAnalyzer未初始化');
+      }
+      
+      // 断开当前源
+      if (this.source) {
+        this.source.disconnect();
+      }
+      
+      // 创建新的音频元素
+      const audioElement = new Audio(audioUrl);
+      audioElement.loop = true;
+      
+      // 创建新的媒体源
+      this.source = this.audioContext.createMediaElementSource(audioElement);
+      this.source.connect(this.analyser);
+      this.analyser.connect(this.audioContext.destination);
+      
+      // 播放音频
+      await audioElement.play();
+      
+    } catch (error) {
+      console.error('切换到音频文件时出错:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * 检查是否已初始化
+   */
+  isInitialized(): boolean {
+    return this.initialized;
+  }
 }
 
-// 导出单例实例
-export default new AudioAnalyzer(); 
+// 创建单例实例
+const audioAnalyzer = new AudioAnalyzer();
+export default audioAnalyzer; 

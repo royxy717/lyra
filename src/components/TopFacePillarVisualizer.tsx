@@ -146,7 +146,10 @@ const TopFacePillarVisualizer: React.FC = () => {
             ref={containerRef} 
             className="pillar-visualizer-container"
           />
-          <ControlPanel onSourceChange={handleSourceChange} />
+          <ControlPanel 
+            onSourceChange={handleSourceChange} 
+            visualizerRef={containerRef}
+          />
         </>
       )}
     </div>

@@ -544,3 +544,90 @@ button:focus-visible {
   height: 100%;
   object-fit: cover;
 }
+
+/* 全屏控制样式 */
+.fullscreen-control {
+  margin: 12px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.fullscreen-button {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: rgba(60, 60, 100, 0.7);
+  border: 1px solid rgba(100, 100, 255, 0.2);
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullscreen-button:hover {
+  background-color: rgba(80, 80, 120, 0.8);
+  border-color: rgba(100, 100, 255, 0.4);
+}
+
+.fullscreen-button:active {
+  transform: scale(0.98);
+}
+
+/* 全屏模式下的样式 */
+.pillar-visualizer-container:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background-color: rgb(15, 15, 25);
+}
+
+/* 兼容不同浏览器的全屏样式 */
+.pillar-visualizer-container:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  background-color: rgb(15, 15, 25);
+}
+
+.pillar-visualizer-container:-moz-full-screen {
+  width: 100vw;
+  height: 100vh;
+  background-color: rgb(15, 15, 25);
+}
+
+.pillar-visualizer-container:-ms-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background-color: rgb(15, 15, 25);
+}
+
+/* 移动端全屏按钮样式 */
+@media (max-width: 767px) {
+  .fullscreen-control {
+    margin: 8px 0;
+  }
+  
+  .fullscreen-button {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+  }
+}
+
+/* 全屏模式下的控制面板样式 */
+.pillar-visualizer-container:fullscreen ~ .control-panel,
+.pillar-visualizer-container:-webkit-full-screen ~ .control-panel,
+.pillar-visualizer-container:-moz-full-screen ~ .control-panel,
+.pillar-visualizer-container:-ms-fullscreen ~ .control-panel {
+  position: fixed;
+  z-index: 9999;
+  opacity: 0.9;
+  transition: opacity 0.3s ease;
+}
+
+.pillar-visualizer-container:fullscreen ~ .control-panel:hover,
+.pillar-visualizer-container:-webkit-full-screen ~ .control-panel:hover,
+.pillar-visualizer-container:-moz-full-screen ~ .control-panel:hover,
+.pillar-visualizer-container:-ms-fullscreen ~ .control-panel:hover {
+  opacity: 1;
+}

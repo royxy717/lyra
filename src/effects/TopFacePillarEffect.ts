@@ -905,18 +905,37 @@ export class TopFacePillarEffect {
     let viewWidth = width;
     let viewHeight = height;
 
+    // 检查是否处于全屏模式
+    const isFullscreen = !!document.fullscreenElement;
+
     if (isPortrait) {
       // 竖屏模式：放大1.5倍，允许裁切
       viewHeight = width * 0.8; // 保持宽高比为 1.25:1
-      // 调整相机视角以适应更大的显示区域
-      this.camera.position.set(0, -95, 110); // 调整相机位置以适应放大的视图
-      this.camera.fov = 42; // 减小视场角以获得更好的视觉效果
+      
+      // 只有在全屏模式下才调整相机位置
+      if (isFullscreen) {
+        // 调整相机视角以适应更大的显示区域
+        this.camera.position.set(0, -95, 110); // 调整相机位置以适应放大的视图
+        this.camera.fov = 42; // 减小视场角以获得更好的视觉效果
+      }
     } else {
       // 横屏模式：填充主要区域
       viewHeight = height;
-      // 恢复默认相机位置和视场角
-      this.camera.position.set(0, -70, 80);
-      this.camera.fov = 45;
+      
+      // 只有在全屏模式下才调整相机位置
+      if (isFullscreen) {
+        // 调整相机位置和视场角
+        this.camera.position.set(0, -70, 80);
+        this.camera.fov = 45;
+      }
+    }
+
+    // 如果不是全屏模式，恢复默认相机位置
+    if (!isFullscreen && this.defaultCameraPosition && this.defaultCameraFov) {
+      this.camera.position.copy(this.defaultCameraPosition);
+      this.camera.fov = this.defaultCameraFov;
+      this.camera.up.set(0, 0, 1);  // 确保Z轴向上
+      this.camera.lookAt(0, 0, 0);  // 重新看向中心点
     }
 
     // 更新相机宽高比和投影矩阵
@@ -943,12 +962,18 @@ export class TopFacePillarEffect {
     // 更新爆炸效果
     this.updateExplosions();
 
-    // 添加相机旋转动画
-    const radius = Math.sqrt(this.camera.position.x * this.camera.position.x + this.camera.position.y * this.camera.position.y);
-    const angle = Math.atan2(this.camera.position.y, this.camera.position.x) + 0.001;
-    this.camera.position.x = radius * Math.cos(angle);
-    this.camera.position.y = radius * Math.sin(angle);
-    this.camera.lookAt(0, 0, 0);
+    // 检查是否处于全屏模式
+    const isFullscreen = !!document.fullscreenElement;
+
+    // 只有在全屏模式下才应用相机旋转动画
+    if (isFullscreen) {
+      // 添加相机旋转动画
+      const radius = Math.sqrt(this.camera.position.x * this.camera.position.x + this.camera.position.y * this.camera.position.y);
+      const angle = Math.atan2(this.camera.position.y, this.camera.position.x) + 0.001;
+      this.camera.position.x = radius * Math.cos(angle);
+      this.camera.position.y = radius * Math.sin(angle);
+      this.camera.lookAt(0, 0, 0);
+    }
 
     // 更新抛掷的顶面
     this.updateThrownFaces(1/60);
@@ -1512,19 +1537,12 @@ export class TopFacePillarEffect {
    * 处理全屏状态变化
    */
   private handleFullscreenChange(): void {
-    // 检查是否退出全屏
-    if (!document.fullscreenElement) {
-      console.log('退出全屏，恢复相机位置');
-      
-      // 恢复默认相机位置和视场角
-      if (this.defaultCameraPosition && this.defaultCameraFov) {
-        this.camera.position.copy(this.defaultCameraPosition);
-        this.camera.fov = this.defaultCameraFov;
-        this.camera.updateProjectionMatrix();
-      }
-    }
+    console.log('全屏状态变化');
     
-    // 更新渲染器尺寸
+    // 更新渲染器尺寸 - 这会自动处理相机位置的恢复
     this.updateRendererSize();
+    
+    // 强制重新渲染一次
+    this.renderer.render(this.scene, this.camera);
   }
 } 

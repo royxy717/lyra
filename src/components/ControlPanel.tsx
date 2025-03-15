@@ -48,6 +48,28 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
     };
   }, []);
   
+  // 添加键盘事件监听，使空格键可以控制音乐播放暂停
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // 如果按下空格键，且音频源是文件或示例音乐
+      if (event.code === 'Space' && (audioSource === 'file' || audioSource === 'demo')) {
+        // 防止空格键触发页面滚动或其他默认行为
+        event.preventDefault();
+        
+        // 切换播放/暂停状态
+        togglePlayPause();
+      }
+    };
+    
+    // 添加键盘事件监听
+    document.addEventListener('keydown', handleKeyDown);
+    
+    // 组件卸载时移除事件监听
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [audioSource]); // 依赖于 audioSource，确保在音频源变化时重新设置监听器
+  
   // 切换到麦克风输入
   const switchToMic = async () => {
     if (audioSource === 'mic') return;

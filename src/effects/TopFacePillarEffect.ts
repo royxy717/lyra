@@ -78,6 +78,14 @@ export class TopFacePillarEffect {
   private readonly EXPLOSION_MAX_AGE = 240; // 增加爆炸效果持续的帧数，从120增加到240
   private readonly EXPLOSION_WAVE_SPEED = 0.675; // 震荡波传播速度，从0.45增加到0.675（再增加50%）
   
+  // 保存默认相机位置，用于在退出全屏时恢复
+  private defaultCameraPosition: THREE.Vector3;
+  private defaultCameraFov: number;
+  
+  // 创建绑定的事件处理函数
+  private boundHandleFullscreenChange: () => void;
+  private boundHandleWindowResize: () => void;
+  
   constructor(private container: HTMLElement) {
     console.log('正在创建TopFacePillarEffect实例');
     console.log('容器大小:', container.clientWidth, container.clientHeight);
@@ -95,6 +103,14 @@ export class TopFacePillarEffect {
     this.camera.position.set(0, -70, 80); // 增加相机高度，使视角更高
     this.camera.up.set(0, 0, 1);  // Z轴向上
     this.camera.lookAt(0, 0, 0);  // 看向中心点
+    
+    // 保存默认相机位置，用于在退出全屏时恢复
+    this.defaultCameraPosition = this.camera.position.clone();
+    this.defaultCameraFov = this.camera.fov;
+    
+    // 创建绑定的事件处理函数
+    this.boundHandleFullscreenChange = this.handleFullscreenChange.bind(this);
+    this.boundHandleWindowResize = this.onWindowResize.bind(this);
     
     // 检查并清理容器中已有的canvas元素
     const existingCanvas = container.querySelector('canvas');
@@ -156,7 +172,7 @@ export class TopFacePillarEffect {
     this.beatHistory = Array(this.gridDimension).fill(0);
     
     // 添加窗口大小变化事件监听器
-    window.addEventListener('resize', this.onWindowResize.bind(this));
+    window.addEventListener('resize', this.boundHandleWindowResize);
     
     console.log('TopFacePillarEffect构造完成');
     
@@ -182,6 +198,9 @@ export class TopFacePillarEffect {
         console.log('已经初始化过，跳过');
         return;
       }
+      
+      // 添加全屏变化事件监听器
+      document.addEventListener('fullscreenchange', this.boundHandleFullscreenChange);
       
       // 清空网格组
       this.grid.clear();
@@ -801,6 +820,9 @@ export class TopFacePillarEffect {
     try {
       this.stop();
       
+      // 移除全屏变化事件监听器
+      document.removeEventListener('fullscreenchange', this.boundHandleFullscreenChange);
+      
       // 清理场景
       this.scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Sprite) {
@@ -851,7 +873,7 @@ export class TopFacePillarEffect {
       }
       
       // 移除事件监听器
-      window.removeEventListener('resize', this.onWindowResize.bind(this));
+      window.removeEventListener('resize', this.boundHandleWindowResize);
       
       // 移除鼓包效果事件监听
       this.container.removeEventListener('updateBulge', this.handleBulgeUpdate.bind(this) as EventListener);
@@ -1484,5 +1506,25 @@ export class TopFacePillarEffect {
     
     // 应用效果到高度
     return baseHeight + totalEffect;
+  }
+
+  /**
+   * 处理全屏状态变化
+   */
+  private handleFullscreenChange(): void {
+    // 检查是否退出全屏
+    if (!document.fullscreenElement) {
+      console.log('退出全屏，恢复相机位置');
+      
+      // 恢复默认相机位置和视场角
+      if (this.defaultCameraPosition && this.defaultCameraFov) {
+        this.camera.position.copy(this.defaultCameraPosition);
+        this.camera.fov = this.defaultCameraFov;
+        this.camera.updateProjectionMatrix();
+      }
+    }
+    
+    // 更新渲染器尺寸
+    this.updateRendererSize();
   }
 } 

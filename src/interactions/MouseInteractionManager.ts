@@ -20,13 +20,13 @@ export class MouseInteractionManager {
   private readonly BULGE_FALLOFF = 2;    // 鼓包衰减指数
   
   // 爆炸效果配置
-  private readonly EXPLOSION_RADIUS = 30;    // 增加爆炸影响半径（从15增加到30）
+  private readonly EXPLOSION_RADIUS = 45;    // 增加爆炸影响半径（从30增加到45，再增加50%）
   private readonly EXPLOSION_STRENGTH = 1.5; // 爆炸强度
   private readonly EXPLOSION_DECAY = 0.95;   // 爆炸衰减系数
   
   // 点击冷却机制
   private lastClickTime: number = 0;
-  private readonly CLICK_COOLDOWN = 500; // 点击冷却时间（毫秒）
+  private readonly CLICK_COOLDOWN = 200; // 点击冷却时间（毫秒），从500减小到200
   
   // 鼠标位置追踪
   private mouse: Vector2;
@@ -34,6 +34,15 @@ export class MouseInteractionManager {
   private groundPlane: Plane;
   private mouseWorldPos: Vector3;
   private isMouseOverGrid: boolean;
+  
+  // 事件处理函数的绑定版本，用于正确移除事件监听器
+  private boundHandleWheel: (event: WheelEvent) => void;
+  private boundHandleMouseMove: (event: MouseEvent) => void;
+  private boundHandleMouseLeave: () => void;
+  private boundHandleClick: (event: MouseEvent) => void;
+  
+  // 标记是否已经添加了事件监听器
+  private hasAddedEventListeners: boolean = false;
   
   constructor(scene: Scene, camera: PerspectiveCamera, renderer: WebGLRenderer, domElement: HTMLElement) {
     this.scene = scene;
@@ -47,6 +56,13 @@ export class MouseInteractionManager {
     this.mouseWorldPos = new Vector3();
     this.isMouseOverGrid = false;
     
+    // 创建绑定的事件处理函数
+    this.boundHandleWheel = this.handleWheel.bind(this);
+    this.boundHandleMouseMove = this.handleMouseMove.bind(this);
+    this.boundHandleMouseLeave = this.handleMouseLeave.bind(this);
+    this.boundHandleClick = this.handleClick.bind(this);
+    
+    // 添加事件监听器
     this.addEventListeners();
   }
   
@@ -54,22 +70,52 @@ export class MouseInteractionManager {
    * 添加事件监听器
    */
   private addEventListeners(): void {
-    this.domElement.addEventListener('wheel', this.handleWheel.bind(this));
-    this.domElement.addEventListener('mousemove', this.handleMouseMove.bind(this));
-    this.domElement.addEventListener('mouseleave', this.handleMouseLeave.bind(this));
-    this.domElement.addEventListener('click', this.handleClick.bind(this), { capture: true }); // 使用捕获阶段
+    // 防止重复添加事件监听器
+    if (this.hasAddedEventListeners) {
+      return;
+    }
+    
+    // 移除可能存在的旧事件监听器
+    this.removeEventListeners();
+    
+    // 添加新的事件监听器
+    this.domElement.addEventListener('wheel', this.boundHandleWheel);
+    this.domElement.addEventListener('mousemove', this.boundHandleMouseMove);
+    this.domElement.addEventListener('mouseleave', this.boundHandleMouseLeave);
+    
+    // 使用捕获阶段处理点击事件，确保在事件冒泡前捕获
+    this.domElement.addEventListener('click', this.boundHandleClick, { capture: true });
+    
+    // 标记已添加事件监听器
+    this.hasAddedEventListeners = true;
+    
+    console.log('MouseInteractionManager: 已添加事件监听器');
+  }
+  
+  /**
+   * 移除事件监听器
+   */
+  private removeEventListeners(): void {
+    this.domElement.removeEventListener('wheel', this.boundHandleWheel);
+    this.domElement.removeEventListener('mousemove', this.boundHandleMouseMove);
+    this.domElement.removeEventListener('mouseleave', this.boundHandleMouseLeave);
+    this.domElement.removeEventListener('click', this.boundHandleClick, { capture: true });
+    
+    // 重置标记
+    this.hasAddedEventListeners = false;
   }
   
   /**
    * 处理鼠标点击事件
    */
-  private handleClick = (event: MouseEvent): void => {
+  private handleClick(event: MouseEvent): void {
     // 检查点击冷却时间
     const currentTime = Date.now();
     if (currentTime - this.lastClickTime < this.CLICK_COOLDOWN) {
       // 如果冷却时间内，阻止事件并返回
       event.preventDefault();
       event.stopPropagation();
+      console.log('MouseInteractionManager: 点击冷却中，忽略点击');
       return;
     }
     
@@ -91,9 +137,11 @@ export class MouseInteractionManager {
       // 触发爆炸效果
       this.createExplosion();
       
-      // 阻止事件冒泡
+      // 阻止事件冒泡和默认行为
       event.preventDefault();
       event.stopPropagation();
+      
+      console.log('MouseInteractionManager: 创建爆炸效果，时间戳:', currentTime);
     }
   }
   
@@ -121,7 +169,7 @@ export class MouseInteractionManager {
   /**
    * 处理鼠标移动事件
    */
-  private handleMouseMove = (event: MouseEvent): void => {
+  private handleMouseMove(event: MouseEvent): void {
     // 计算鼠标在归一化设备坐标中的位置
     const rect = this.domElement.getBoundingClientRect();
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -145,7 +193,7 @@ export class MouseInteractionManager {
   /**
    * 处理鼠标离开事件
    */
-  private handleMouseLeave = (): void => {
+  private handleMouseLeave(): void {
     this.isMouseOverGrid = false;
     // 重置鼓包效果
     this.resetBulgeEffect();
@@ -185,7 +233,7 @@ export class MouseInteractionManager {
   /**
    * 处理滚轮事件
    */
-  private handleWheel = (event: WheelEvent): void => {
+  private handleWheel(event: WheelEvent): void {
     event.preventDefault();
     
     const delta = event.deltaY > 0 ? 1 : -1;
@@ -205,9 +253,8 @@ export class MouseInteractionManager {
    * 清理资源
    */
   public dispose(): void {
-    this.domElement.removeEventListener('wheel', this.handleWheel);
-    this.domElement.removeEventListener('mousemove', this.handleMouseMove);
-    this.domElement.removeEventListener('mouseleave', this.handleMouseLeave);
-    this.domElement.removeEventListener('click', this.handleClick);
+    // 移除所有事件监听器
+    this.removeEventListeners();
+    console.log('MouseInteractionManager: 已移除所有事件监听器');
   }
 } 

@@ -76,7 +76,7 @@ export class TopFacePillarEffect {
     flash: THREE.Sprite | null;
   }[] = [];
   private readonly EXPLOSION_MAX_AGE = 240; // 增加爆炸效果持续的帧数，从120增加到240
-  private readonly EXPLOSION_WAVE_SPEED = 0.3; // 震荡波传播速度
+  private readonly EXPLOSION_WAVE_SPEED = 0.675; // 震荡波传播速度，从0.45增加到0.675（再增加50%）
   
   constructor(private container: HTMLElement) {
     console.log('正在创建TopFacePillarEffect实例');
@@ -1474,8 +1474,8 @@ export class TopFacePillarEffect {
         const ageFactor = 1 - Math.pow(explosion.age / explosion.maxAge, 0.8); // 使用非线性衰减，减缓衰减速度
         const strengthFactor = explosion.strength * distanceFactor * ageFactor;
         
-        // 计算最终效果
-        const effect = waveForm * strengthFactor;
+        // 计算最终效果 - 将波峰高度调整为原来的70%
+        const effect = waveForm * strengthFactor * 0.7;
         
         // 累加效果
         totalEffect += effect;

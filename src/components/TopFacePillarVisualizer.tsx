@@ -6,25 +6,6 @@ import { useMouseInteraction } from '../hooks/useMouseInteraction';
 import { Scene, PerspectiveCamera, WebGLRenderer } from 'three';
 
 /**
- * 创建一个短暂的静音音频上下文
- * 用于初始化音频系统
- */
-const createSilentAudio = () => {
-  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
-  
-  // 将音量设置为0（静音）
-  gainNode.gain.value = 0;
-  
-  // 连接节点
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-  
-  return { oscillator, audioContext, gainNode };
-};
-
-/**
  * 3D顶面柱状图可视化组件
  * 使用只有顶面的柱体，实现消隐效果
  */
@@ -33,38 +14,36 @@ const TopFacePillarVisualizer: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(true); // 默认为 true，不显示初始化提示
   const [error, setError] = useState<string | null>(null);
   const effectRef = useRef<TopFacePillarEffect | null>(null);
+  const [audioInitialized, setAudioInitialized] = useState(false);
   
   // 新增：Three.js 对象的引用
   const sceneRef = useRef<Scene | null>(null);
   const cameraRef = useRef<PerspectiveCamera | null>(null);
   const rendererRef = useRef<WebGLRenderer | null>(null);
   
-  // 初始化音频系统
+  // 初始化音频环境
   useEffect(() => {
-    const initializeAudioSystem = async () => {
+    const initAudio = async () => {
       try {
-        // 创建并播放静音音频
-        const { oscillator, audioContext, gainNode } = createSilentAudio();
-        
-        // 启动振荡器
-        oscillator.start();
-        
-        // 0.5秒后停止
-        setTimeout(() => {
-          oscillator.stop();
-          gainNode.disconnect();
-          audioContext.close();
-        }, 500);
-        
-        // 确保音频分析器已初始化
-        await audioAnalyzer.initialize();
-        
-      } catch (err) {
-        console.error('初始化音频系统时出错:', err);
+        // 自动初始化音频分析器（使用静音音频）
+        const success = await audioAnalyzer.autoInitialize();
+        if (success) {
+          console.log('音频环境自动初始化成功');
+          setAudioInitialized(true);
+        } else {
+          console.error('音频环境自动初始化失败');
+        }
+      } catch (error) {
+        console.error('初始化音频环境时出错:', error);
       }
     };
     
-    initializeAudioSystem();
+    initAudio();
+    
+    // 组件卸载时清理
+    return () => {
+      // 不要在这里清理音频分析器，因为它可能被其他组件使用
+    };
   }, []);
   
   // 初始化3D效果

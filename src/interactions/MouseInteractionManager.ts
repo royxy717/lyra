@@ -59,6 +59,10 @@ export class MouseInteractionManager {
   // 设备检测
   private isMobileDevice: boolean = false;
   
+  // 屏幕方向相关
+  private isLandscape: boolean = false;
+  private orientationChangeHandler: () => void;
+  
   constructor(scene: Scene, camera: PerspectiveCamera, renderer: WebGLRenderer, domElement: HTMLElement) {
     this.scene = scene;
     this.camera = camera;
@@ -86,12 +90,26 @@ export class MouseInteractionManager {
     this.boundHandleTouchMove = this.handleTouchMove.bind(this);
     this.boundHandleTouchEnd = this.handleTouchEnd.bind(this);
     
+    // 创建绑定的屏幕方向变化处理函数
+    this.orientationChangeHandler = this.handleOrientationChange.bind(this);
+    
     // 添加事件监听器
     this.addEventListeners();
     
     // 如果是移动设备，应用移动设备特定的优化
     if (this.isMobileDevice) {
       this.applyMobileOptimizations();
+      
+      // 初始检查屏幕方向
+      this.isLandscape = window.matchMedia("(orientation: landscape)").matches;
+      console.log(`当前屏幕方向: ${this.isLandscape ? '横屏' : '竖屏'}`);
+      
+      // 添加屏幕方向变化监听
+      window.addEventListener('orientationchange', this.orientationChangeHandler);
+      window.addEventListener('resize', this.orientationChangeHandler);
+      
+      // 初始应用屏幕方向处理
+      this.handleScreenOrientation();
     }
   }
   
@@ -502,6 +520,93 @@ export class MouseInteractionManager {
   public dispose(): void {
     // 移除所有事件监听器
     this.removeEventListeners();
+    
+    // 移除屏幕方向变化监听
+    if (this.isMobileDevice) {
+      window.removeEventListener('orientationchange', this.orientationChangeHandler);
+      window.removeEventListener('resize', this.orientationChangeHandler);
+    }
+    
     console.log('MouseInteractionManager: 已移除所有事件监听器');
+  }
+  
+  /**
+   * 检查屏幕方向
+   */
+  private checkOrientation(): void {
+    // 检测是否为横屏
+    const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+    
+    // 如果方向发生变化
+    if (this.isLandscape !== isLandscape) {
+      this.isLandscape = isLandscape;
+      
+      // 根据屏幕方向处理全屏
+      this.handleScreenOrientation();
+    }
+  }
+  
+  /**
+   * 处理屏幕方向变化
+   */
+  private handleOrientationChange(): void {
+    // 延迟执行，等待屏幕方向变化完成
+    setTimeout(() => {
+      this.checkOrientation();
+    }, 300);
+  }
+  
+  /**
+   * 根据屏幕方向处理全屏
+   */
+  private handleScreenOrientation(): void {
+    // 只在移动设备上处理
+    if (!this.isMobileDevice) return;
+    
+    if (this.isLandscape) {
+      // 横屏时自动进入全屏
+      this.enterFullscreen();
+    } else {
+      // 竖屏时退出全屏
+      this.exitFullscreen();
+    }
+  }
+  
+  /**
+   * 进入全屏模式
+   */
+  private enterFullscreen(): void {
+    // 检查是否已经处于全屏状态
+    if (document.fullscreenElement) return;
+    
+    try {
+      // 尝试请求全屏
+      if (this.domElement.requestFullscreen) {
+        this.domElement.requestFullscreen().catch(err => {
+          console.error(`无法进入全屏模式: ${err.message}`);
+        });
+      }
+    } catch (error) {
+      console.error('进入全屏时出错:', error);
+    }
+  }
+  
+  /**
+   * 退出全屏模式
+   */
+  private exitFullscreen(): void {
+    // 检查是否处于全屏状态
+    if (!document.fullscreenElement) return;
+    
+    try {
+      // 尝试退出全屏
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(err => {
+          console.error(`无法退出全屏模式: ${err.message}`);
+        });
+      }
+    } catch (error) {
+      console.error('退出全屏时出错:', error);
+    }
   }
 } 

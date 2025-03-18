@@ -1,5 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import audioAnalyzer from '../core/AudioAnalyzer';
+import * as mm from 'music-metadata';
+
+interface MusicInfo {
+  title: string;
+  artist: string;
+  file: string;
+}
 
 interface ControlPanelProps {
   onSourceChange: () => void;
@@ -14,14 +21,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // 添加示例音乐列表
-  const demoMusicList = [
-    { name: '电台音乐1', file: '/demo_music/demo1.mp3' },
-    { name: '电台音乐2', file: '/demo_music/demo2.mp3' },
-    { name: '电台音乐3', file: '/demo_music/demo3.mp3' },
-    { name: '电台音乐4', file: '/demo_music/demo4.mp3' },
-    { name: '电台音乐5', file: '/demo_music/demo5.mp3' },
-  ];
+  const [demoMusicList, setDemoMusicList] = useState<MusicInfo[]>([]);
   const [currentDemoIndex, setCurrentDemoIndex] = useState(0);
   
   // 检查播放状态
@@ -78,6 +78,56 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [audioSource]); // 依赖于 audioSource，确保在音频源变化时重新设置监听器
+  
+  // 从音频文件中提取元数据
+  const extractMetadata = async (file: string): Promise<MusicInfo> => {
+    try {
+      const response = await fetch(file);
+      const buffer = await response.arrayBuffer();
+      const metadata = await mm.parseBuffer(new Uint8Array(buffer));
+      
+      return {
+        title: metadata.common.title || file.split('/').pop()?.replace('.mp3', '') || 'Unknown Title',
+        artist: metadata.common.artist || 'Unknown Artist',
+        file: file
+      };
+    } catch (error) {
+      console.error('提取音频元数据时出错:', error);
+      return {
+        title: file.split('/').pop()?.replace('.mp3', '') || 'Unknown Title',
+        artist: 'Unknown Artist',
+        file: file
+      };
+    }
+  };
+
+  // 初始化示例音乐列表
+  useEffect(() => {
+    const loadDemoMusicMetadata = async () => {
+      setIsLoading(true);
+      try {
+        const demoFiles = [
+          '/demo_music/demo1.mp3',
+          '/demo_music/demo2.mp3',
+          '/demo_music/demo3.mp3',
+          '/demo_music/demo4.mp3',
+          '/demo_music/demo5.mp3'
+        ];
+
+        const musicInfoList = await Promise.all(
+          demoFiles.map(file => extractMetadata(file))
+        );
+
+        setDemoMusicList(musicInfoList);
+      } catch (error) {
+        console.error('加载示例音乐元数据时出错:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDemoMusicMetadata();
+  }, []);
   
   // 切换到麦克风输入
   const switchToMic = async () => {
@@ -156,25 +206,21 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
     setIsLoading(true);
     setError(null);
     try {
-      // 清理当前音频分析器
       audioAnalyzer.cleanup();
       
-      // 初始化示例音频
       const success = await audioAnalyzer.initializeWithAudio(demoMusicList[currentDemoIndex].file);
       if (!success) {
         throw new Error('无法加载示例音频文件');
       }
       
       setAudioSource('demo');
-      setFileName(`${demoMusicList[currentDemoIndex].name}`);
+      setFileName(`${demoMusicList[currentDemoIndex].artist} - ${demoMusicList[currentDemoIndex].title}`);
       setIsPaused(false);
       onSourceChange();
 
-      // 添加音频结束事件监听器
       const audioElement = audioAnalyzer.getAudioElement();
       if (audioElement) {
         audioElement.onended = () => {
-          // 播放下一首
           playNextDemo();
         };
       }
@@ -187,9 +233,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
     }
   };
   
-  // 添加播放下一首示例音乐的函数
+  // 修改播放下一首示例音乐的函数
   const playNextDemo = async () => {
-    // 先暂停并清理当前音频，防止两首歌同时播放
     if (audioAnalyzer.getAudioElement()) {
       audioAnalyzer.getAudioElement()!.pause();
       audioAnalyzer.cleanup();
@@ -201,7 +246,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
     try {
       const success = await audioAnalyzer.initializeWithAudio(demoMusicList[nextIndex].file);
       if (success) {
-        setFileName(`${demoMusicList[nextIndex].name}`);
+        setFileName(`${demoMusicList[nextIndex].artist} - ${demoMusicList[nextIndex].title}`);
         const audioElement = audioAnalyzer.getAudioElement();
         if (audioElement) {
           audioElement.onended = () => {
@@ -214,9 +259,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
     }
   };
   
-  // 添加播放上一首示例音乐的函数
+  // 修改播放上一首示例音乐的函数
   const playPreviousDemo = async () => {
-    // 先暂停并清理当前音频，防止两首歌同时播放
     if (audioAnalyzer.getAudioElement()) {
       audioAnalyzer.getAudioElement()!.pause();
       audioAnalyzer.cleanup();
@@ -228,7 +272,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
     try {
       const success = await audioAnalyzer.initializeWithAudio(demoMusicList[prevIndex].file);
       if (success) {
-        setFileName(`${demoMusicList[prevIndex].name}`);
+        setFileName(`${demoMusicList[prevIndex].artist} - ${demoMusicList[prevIndex].title}`);
         const audioElement = audioAnalyzer.getAudioElement();
         if (audioElement) {
           audioElement.onended = () => {
@@ -275,6 +319,42 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
     }
   };
   
+  // 添加点击播放指定歌曲的函数
+  const playSelectedSong = async (index: number) => {
+    if (index === currentDemoIndex && audioSource === 'demo') {
+      // 如果点击当前播放的歌曲，则切换播放/暂停状态
+      togglePlayPause();
+      return;
+    }
+    
+    // 如果正在播放其他歌曲，先停止
+    if (audioAnalyzer.getAudioElement()) {
+      audioAnalyzer.getAudioElement()!.pause();
+      audioAnalyzer.cleanup();
+    }
+    
+    setCurrentDemoIndex(index);
+    
+    try {
+      const success = await audioAnalyzer.initializeWithAudio(demoMusicList[index].file);
+      if (success) {
+        setAudioSource('demo');
+        setFileName(`${demoMusicList[index].artist} - ${demoMusicList[index].title}`);
+        setIsPaused(false);
+        onSourceChange();
+        
+        const audioElement = audioAnalyzer.getAudioElement();
+        if (audioElement) {
+          audioElement.onended = () => {
+            playNextDemo();
+          };
+        }
+      }
+    } catch (error: any) {
+      console.error('播放选中歌曲时出错:', error);
+    }
+  };
+  
   return (
     <div className="control-panel">
       <div className="source-selector">
@@ -296,14 +376,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
             上传
           </button>
           
-          <button 
-            className={`source-button ${audioSource === 'demo' ? 'active' : ''}`}
-            onClick={useDemoAudio}
-            disabled={isLoading || audioSource === 'demo'}
-          >
-            电台
-          </button>
-          
           <input 
             type="file" 
             ref={fileInputRef}
@@ -322,36 +394,33 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
         {(audioSource === 'file' || audioSource === 'demo') && fileName && (
           <div className="file-info">
             <div className="file-name">
-              当前文件: {fileName}
+              {fileName}
             </div>
             
             <div className="playback-controls">
               {audioSource === 'demo' && (
                 <button 
-                  className="nav-button prev-button"
+                  className="nav-button prev"
                   onClick={playPreviousDemo}
                   disabled={isLoading}
-                >
-                  ⏮️
-                </button>
+                  aria-label="上一首"
+                />
               )}
               
               <button 
-                className="play-pause-button"
+                className={`play-pause-button ${!isPaused ? 'playing' : ''}`}
                 onClick={togglePlayPause}
                 disabled={audioSource !== 'file' && audioSource !== 'demo'}
-              >
-                {isPaused ? '▶️' : '⏸️'}
-              </button>
+                aria-label={isPaused ? '播放' : '暂停'}
+              />
               
               {audioSource === 'demo' && (
                 <button 
-                  className="nav-button next-button"
+                  className="nav-button next"
                   onClick={playNextDemo}
                   disabled={isLoading}
-                >
-                  ⏭️
-                </button>
+                  aria-label="下一首"
+                />
               )}
             </div>
           </div>
@@ -364,6 +433,28 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
         )}
       </div>
       
+      <div className="instructions">
+        <button 
+          className={`source-button ${audioSource === 'demo' ? 'active' : ''}`}
+          onClick={useDemoAudio}
+          disabled={isLoading || audioSource === 'demo'}
+        >
+          弦歌电台
+        </button>
+        <ul className="demo-music-list">
+          {demoMusicList.map((music, index) => (
+            <li 
+              key={index} 
+              className={currentDemoIndex === index ? 'active' : ''}
+              onClick={() => playSelectedSong(index)}
+              style={{ cursor: 'pointer' }}
+            >
+              {music.artist} - {music.title}
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <div className="fullscreen-control">
         <button 
           className="fullscreen-button"
@@ -386,17 +477,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
             </>
           )}
         </button>
-      </div>
-      
-      <div className="instructions">
-        <p>本期弦歌电台歌单，下面是1-5首demo音乐的曲名：</p>
-        <ul className="demo-music-list">
-          {demoMusicList.map((music, index) => (
-            <li key={index} className={currentDemoIndex === index ? 'active' : ''}>
-              {music.name}
-            </li>
-          ))}
-        </ul>
       </div>
     </div>
   );

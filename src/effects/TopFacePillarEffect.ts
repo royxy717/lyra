@@ -55,8 +55,8 @@ export class TopFacePillarEffect {
   private silenceTimer: number = 0;
   private silenceThreshold: number = 30; // 静音检测阈值
   
-  // 网页背景色 - 深蓝色
-  private readonly backgroundColor: number = 0x171923;
+  // 网页背景色 - 群青色
+  private readonly backgroundColor: number = 0x1B1F2E;
   
   // 鼓包效果相关属性
   private bulgePosition: THREE.Vector2 | null = null;
@@ -78,16 +78,41 @@ export class TopFacePillarEffect {
   private readonly EXPLOSION_MAX_AGE = 240; // 增加爆炸效果持续的帧数，从120增加到240
   private readonly EXPLOSION_WAVE_SPEED = 0.675; // 震荡波传播速度，从0.45增加到0.675（再增加50%）
   
-  // 保存默认相机位置，用于在退出全屏时恢复
-  private defaultCameraPosition: THREE.Vector3;
-  private defaultCameraFov: number;
+  // 完整保存相机状态
+  private cameraState: {
+    position: THREE.Vector3;
+    fov: number;
+    quaternion: THREE.Quaternion;
+    zoom: number;
+    aspect: number;
+    up: THREE.Vector3;
+  } | null = null;
   
   // 创建绑定的事件处理函数
   private boundHandleFullscreenChange: () => void;
   private boundHandleWindowResize: () => void;
   
+  // 添加初始相机状态
+  private initialCameraState: {
+    position: THREE.Vector3;
+    fov: number;
+    quaternion: THREE.Quaternion;
+    zoom: number;
+    aspect: number;
+    up: THREE.Vector3;
+  } | null = null;
+  
   constructor(private container: HTMLElement) {
-    console.log('正在创建TopFacePillarEffect实例');
+    console.log('=== 初始化TopFacePillarEffect ===');
+    console.log('初始容器状态:', {
+        style: {
+            transform: container.style.transform,
+            position: container.style.position,
+            top: container.style.top,
+            left: container.style.left
+        },
+        rect: container.getBoundingClientRect()
+    });
     console.log('容器大小:', container.clientWidth, container.clientHeight);
     
     // 创建场景
@@ -96,17 +121,44 @@ export class TopFacePillarEffect {
     // 设置背景色为透明，与网页背景颜色一致
     this.scene.background = null;
     
-    // 创建相机 - 使用更适合消隐测试的视角
+    // 设置容器的初始样式
+    container.style.position = 'relative';  // 添加默认定位
+    container.style.width = '100%';
+    container.style.height = '100%';
+    container.style.display = 'flex';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'center';
+    
+    // 创建相机
     this.camera = new THREE.PerspectiveCamera(45, 1, 1, 1000);
+    this.camera.position.set(0, -70, 80);
+    this.camera.up.set(0, 0, 1);
+    this.camera.lookAt(0, 0, 0);
     
-    // 调整相机位置，使视角正确且内容居中
-    this.camera.position.set(0, -70, 80); // 增加相机高度，使视角更高
-    this.camera.up.set(0, 0, 1);  // Z轴向上
-    this.camera.lookAt(0, 0, 0);  // 看向中心点
+    // 等待DOM更新完成后再保存初始状态
+    Promise.resolve().then(() => {
+        requestAnimationFrame(() => {
+            const rect = container.getBoundingClientRect();
+            this.camera.aspect = rect.width / rect.height;
+            this.camera.updateProjectionMatrix();
+            
+            this.initialCameraState = {
+                position: this.camera.position.clone(),
+                fov: this.camera.fov,
+                quaternion: this.camera.quaternion.clone(),
+                zoom: this.camera.zoom,
+                aspect: rect.width / rect.height,
+                up: this.camera.up.clone()
+            };
+            
+            // 同时保存为当前状态
+            this.saveCameraState();
+            console.log('初始相机状态已保存:', this.initialCameraState);
+        });
+    });
     
-    // 保存默认相机位置，用于在退出全屏时恢复
-    this.defaultCameraPosition = this.camera.position.clone();
-    this.defaultCameraFov = this.camera.fov;
+    // 初始化相机状态
+    this.saveCameraState();
     
     // 创建绑定的事件处理函数
     this.boundHandleFullscreenChange = this.handleFullscreenChange.bind(this);
@@ -131,8 +183,8 @@ export class TopFacePillarEffect {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.updateRendererSize();
     
-    // 激活深度测试
-    this.renderer.setClearColor(0x000000, 0);
+    // 设置背景色为群青色
+    this.renderer.setClearColor(this.backgroundColor, 1);
     this.renderer.autoClear = true;
     this.renderer.sortObjects = true;
     
@@ -214,7 +266,7 @@ export class TopFacePillarEffect {
       
       // 创建材质 - 顶面填充材质（与网页背景色一致）
       const topFaceMaterial = new THREE.MeshBasicMaterial({
-        color: this.backgroundColor, // 使用与网页背景一致的深蓝色
+        color: this.backgroundColor,
         transparent: false,
         side: THREE.DoubleSide,
         depthTest: true,
@@ -309,6 +361,9 @@ export class TopFacePillarEffect {
       
       // 设置为已初始化
       this.isInitialized = true;
+      
+      // 初始化时保存相机状态
+      this.saveCameraState();
       
     } catch (error) {
       console.error('初始化TopFacePillarEffect失败:', error);
@@ -731,30 +786,10 @@ export class TopFacePillarEffect {
    * @param j Y坐标
    */
   private setBrightnessBasedColor(i: number, j: number): void {
-    const topFaceGroup = this.topFaces[i][j];
-    if (!topFaceGroup) return;
-    
-    const height = this.pillarHeights[i][j];
-    
-    // 如果处于静音状态，使用20%灰色
-    if (this.isSilent) {
-      // 更新线框颜色 - 线框是第二个子对象
-      const topEdge = topFaceGroup.children[1];
-      if (topEdge instanceof THREE.Line && topEdge.material instanceof THREE.LineBasicMaterial) {
-        topEdge.material.color.setRGB(0.2, 0.2, 0.2); // 20%灰色
-      }
-      return;
-    }
-    
-    // 计算亮度 - 从20%到100%
-    // 绝对高度6对应的height值为6/28=0.214（因为现在Z轴缩放是28倍）
-    const brightness = 0.2 + Math.min(height / 0.214 * 0.8, 0.8); // 将高度映射到亮度，范围从0.2到1.0
-    
-    // 更新线框颜色 - 线框是第二个子对象
-    const topEdge = topFaceGroup.children[1];
-    if (topEdge instanceof THREE.Line && topEdge.material instanceof THREE.LineBasicMaterial) {
-      topEdge.material.color.setRGB(brightness, brightness, brightness);
-    }
+    if (!this.topFaces[i][j]) return;
+
+    const material = (this.topFaces[i][j].children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial;
+    material.color.setHex(0x1B1F2E);  // 更新填充色
   }
   
   /**
@@ -892,46 +927,75 @@ export class TopFacePillarEffect {
    * 更新渲染器尺寸
    */
   private updateRendererSize(): void {
-    if (!this.container || !this.camera || !this.renderer) return;
-
-    // 获取容器尺寸
-    const width = this.container.clientWidth;
-    const height = this.container.clientHeight;
-
-    // 检测屏幕方向
-    const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-
-    // 计算合适的视口大小
-    let viewWidth = width;
-    let viewHeight = height;
-
-    if (isPortrait) {
-      // 竖屏模式：放大1.5倍，允许裁切
-      viewHeight = width * 0.8; // 保持宽高比为 1.25:1
-      // 调整相机视角以适应更大的显示区域
-      this.camera.position.set(0, -95, 110); // 调整相机位置以适应放大的视图
-      this.camera.fov = 42; // 减小视场角以获得更好的视觉效果
-    } else {
-      // 横屏模式：填充主要区域
-      viewHeight = height;
-      // 恢复默认相机位置和视场角
-      this.camera.position.set(0, -70, 80);
-      this.camera.fov = 45;
-    }
-
-    // 更新相机宽高比和投影矩阵
-    this.camera.aspect = viewWidth / viewHeight;
+    if (!this.container || !this.renderer || !this.camera) return;
+    
+    // 获取容器的实际尺寸
+    const rect = this.container.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    
+    console.log('更新渲染器尺寸:', {
+        containerRect: rect,
+        width,
+        height,
+        devicePixelRatio: window.devicePixelRatio
+    });
+    
+    // 设置渲染器尺寸
+    this.renderer.setSize(width, height, false);
+    
+    // 更新相机宽高比
+    this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
-
-    // 更新渲染器尺寸
-    this.renderer.setSize(viewWidth, viewHeight);
+    
+    // 强制渲染一次
+    this.renderer.render(this.scene, this.camera);
   }
 
   /**
    * 处理窗口大小变化
    */
   onWindowResize(): void {
-    this.updateRendererSize();
+    if (!this.container || !this.camera || !this.renderer) return;
+    
+    console.log('窗口大小改变 - 前:', {
+      containerWidth: this.container.clientWidth,
+      containerHeight: this.container.clientHeight,
+      cameraPosition: this.camera.position.clone(),
+      cameraFov: this.camera.fov
+    });
+    
+    // 保存当前相机状态
+    this.saveCameraState();
+    
+    const viewWidth = this.container.clientWidth;
+    const viewHeight = this.container.clientHeight;
+    
+    // 更新渲染器尺寸
+    this.renderer.setSize(viewWidth, viewHeight);
+    
+    // 更新相机宽高比
+    this.camera.aspect = viewWidth / viewHeight;
+    this.camera.updateProjectionMatrix();
+    
+    // 恢复上一次保存的位置和视角，保持除宽高比外的状态不变
+    if (this.cameraState) {
+      this.camera.position.copy(this.cameraState.position);
+      this.camera.fov = this.cameraState.fov;
+      this.camera.quaternion.copy(this.cameraState.quaternion);
+      this.camera.zoom = this.cameraState.zoom;
+      this.camera.up.copy(this.cameraState.up);
+      this.camera.updateProjectionMatrix();
+    }
+    
+    console.log('窗口大小改变 - 后:', {
+      position: this.camera.position.clone(),
+      fov: this.camera.fov,
+      aspect: this.camera.aspect
+    });
+    
+    // 重新渲染场景
+    this.renderer.render(this.scene, this.camera);
   }
   
   /**
@@ -1511,20 +1575,243 @@ export class TopFacePillarEffect {
   /**
    * 处理全屏状态变化
    */
-  private handleFullscreenChange(): void {
-    // 检查是否退出全屏
-    if (!document.fullscreenElement) {
-      console.log('退出全屏，恢复相机位置');
-      
-      // 恢复默认相机位置和视场角
-      if (this.defaultCameraPosition && this.defaultCameraFov) {
-        this.camera.position.copy(this.defaultCameraPosition);
-        this.camera.fov = this.defaultCameraFov;
-        this.camera.updateProjectionMatrix();
-      }
-    }
+  private handleFullscreenChange = () => {
+    const container = this.container;
+    const isFullscreen = document.fullscreenElement !== null;
     
-    // 更新渲染器尺寸
-    this.updateRendererSize();
+    if (!isFullscreen) {
+        // 退出全屏
+        console.log('退出全屏 - 开始处理');
+        
+        // 1. 首先保存当前状态
+        const currentRect = container.getBoundingClientRect();
+        const currentCameraState = {
+            position: this.camera.position.clone(),
+            fov: this.camera.fov,
+            quaternion: this.camera.quaternion.clone(),
+            zoom: this.camera.zoom,
+            aspect: this.camera.aspect,
+            up: this.camera.up.clone()
+        };
+        
+        // 2. 重置为初始样式 - 修改样式设置顺序
+        // 2. 重置为初始样式
+        container.style.position = 'relative';
+        container.style.transform = '';
+        container.style.top = '';
+        container.style.left = '';
+        container.style.margin = '';
+        container.style.padding = '';
+        container.style.width = '100%';
+        container.style.height = '100%';
+        container.style.display = 'flex';
+        container.style.justifyContent = 'center';
+        container.style.alignItems = 'center';
+        
+        // 3. 使用Promise等待样式更新
+        Promise.resolve().then(() => {
+            // 3.1 检查是否是移动端
+            if (window.matchMedia("(max-width: 767px) and (orientation: portrait)").matches) {
+                container.style.position = 'absolute';
+                container.style.transform = 'translateX(-50%)';
+                container.style.left = '50%';
+                container.style.top = '0';
+            }
+            
+            // 3.2 等待下一帧确保样式已应用
+            requestAnimationFrame(() => {
+                // 获取新的容器尺寸
+                const newRect = container.getBoundingClientRect();
+                console.log('容器尺寸变化:', {
+                    之前: currentRect,
+                    现在: newRect
+                });
+                
+                // 3.3 恢复相机状态，但保持当前的视角
+                this.camera.position.copy(currentCameraState.position);
+                this.camera.quaternion.copy(currentCameraState.quaternion);
+                this.camera.zoom = currentCameraState.zoom;
+                this.camera.fov = currentCameraState.fov;
+                this.camera.up.copy(currentCameraState.up);
+                
+                // 3.4 更新宽高比
+                this.camera.aspect = newRect.width / newRect.height;
+                this.camera.updateProjectionMatrix();
+                
+                // 3.5 更新渲染器尺寸并渲染
+                this.renderer.setSize(newRect.width, newRect.height, false);
+                this.renderer.render(this.scene, this.camera);
+                
+                // 3.6 保存新状态
+                this.saveCameraState();
+                
+                console.log('相机状态已更新:', {
+                    之前: currentCameraState,
+                    现在: {
+                        position: this.camera.position.clone(),
+                        fov: this.camera.fov,
+                        quaternion: this.camera.quaternion.clone(),
+                        zoom: this.camera.zoom,
+                        aspect: this.camera.aspect,
+                        up: this.camera.up.clone()
+                    }
+                });
+            });
+        });
+    } else {
+        // 进入全屏
+        console.log('进入全屏 - 开始处理');
+        
+        // 1. 保存当前状态
+        const currentState = {
+            position: this.camera.position.clone(),
+            fov: this.camera.fov,
+            quaternion: this.camera.quaternion.clone(),
+            zoom: this.camera.zoom,
+            aspect: this.camera.aspect,
+            up: this.camera.up.clone()
+        };
+        
+        // 2. 应用全屏样式
+        container.style.transform = 'none';
+        container.style.position = 'fixed';
+        container.style.top = '0';
+        container.style.left = '0';
+        container.style.margin = '0';
+        container.style.padding = '0';
+        container.style.width = '100vw';
+        container.style.height = '100vh';
+        
+        // 3. 等待样式应用完成
+        Promise.resolve().then(() => {
+            requestAnimationFrame(() => {
+                const rect = container.getBoundingClientRect();
+                
+                // 保持当前视角，只更新宽高比
+                this.camera.aspect = rect.width / rect.height;
+                this.camera.updateProjectionMatrix();
+                
+                // 更新渲染器尺寸
+                this.renderer.setSize(rect.width, rect.height, false);
+                this.renderer.render(this.scene, this.camera);
+                
+                // 保存新状态
+                this.saveCameraState();
+                
+                console.log('全屏相机状态已更新:', {
+                    之前: currentState,
+                    现在: {
+                        position: this.camera.position.clone(),
+                        fov: this.camera.fov,
+                        quaternion: this.camera.quaternion.clone(),
+                        zoom: this.camera.zoom,
+                        aspect: this.camera.aspect,
+                        up: this.camera.up.clone()
+                    }
+                });
+            });
+        });
+    }
+};
+
+  /**
+   * 保存当前相机的完整状态
+   */
+  private saveCameraState(): void {
+    if (!this.camera) return;
+    
+    const prevState = this.cameraState ? { ...this.cameraState } : null;
+    
+    this.cameraState = {
+        position: this.camera.position.clone(),
+        fov: this.camera.fov,
+        quaternion: this.camera.quaternion.clone(),
+        zoom: this.camera.zoom,
+        aspect: this.camera.aspect,
+        up: this.camera.up.clone()
+    };
+    
+    console.log('=== 保存相机状态 ===', {
+        调用栈: new Error().stack,
+        之前状态: prevState,
+        新状态: this.cameraState,
+        当前容器样式: {
+            transform: this.container.style.transform,
+            position: this.container.style.position,
+            top: this.container.style.top,
+            left: this.container.style.left
+        }
+    });
+  }
+
+  /**
+   * 恢复保存的相机状态
+   */
+  private restoreCameraState(): void {
+    if (!this.camera || !this.cameraState) return;
+    
+    console.log('=== 恢复相机状态 ===', {
+        当前状态: {
+            position: this.camera.position.clone(),
+            quaternion: this.camera.quaternion.clone(),
+            zoom: this.camera.zoom
+        },
+        要恢复的状态: this.cameraState,
+        调用栈: new Error().stack
+    });
+    
+    // 恢复所有相机状态
+    this.camera.position.copy(this.cameraState.position);
+    this.camera.fov = this.cameraState.fov;
+    this.camera.quaternion.copy(this.cameraState.quaternion);
+    this.camera.zoom = this.cameraState.zoom;
+    this.camera.up.copy(this.cameraState.up);
+    
+    // 更新投影矩阵
+    this.camera.updateProjectionMatrix();
+    
+    console.log('相机状态恢复完成');
+  }
+
+  private createTopFace(i: number, j: number): THREE.Group {
+    const group = new THREE.Group();
+    
+    // 创建顶面几何体
+    const geometry = new THREE.PlaneGeometry(this.gridSize * 0.95, this.gridSize * 0.95);
+    
+    // 创建材质 - 使用群青色
+    const material = new THREE.MeshBasicMaterial({
+      color: 0x1B1F2E,  // 更新填充色
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 1
+    });
+    
+    // 创建顶面网格
+    const mesh = new THREE.Mesh(geometry, material);
+    
+    // 创建边框几何体
+    const edgeGeometry = new THREE.EdgesGeometry(geometry);
+    const edgeMaterial = new THREE.LineBasicMaterial({
+      color: 0x2B3147,  // 保持线框颜色略亮
+      transparent: true,
+      opacity: 0.5
+    });
+    
+    // 创建边框
+    const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+    
+    // 将网格和边框添加到组
+    group.add(mesh);
+    group.add(edges);
+    
+    // 设置位置
+    group.position.set(
+      (i - this.gridDimension / 2) * this.gridSize,
+      (j - this.gridDimension / 2) * this.gridSize,
+      0
+    );
+    
+    return group;
   }
 } 

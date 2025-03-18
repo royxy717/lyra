@@ -131,3 +131,94 @@ nav a:hover {
   flex: 1;
   overflow: hidden;
 }
+
+/* 添加播放控制样式 */
+.playback-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.play-pause-button {
+  padding: 8px;
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.play-pause-button:hover {
+  background-color: #535bf2;
+  transform: scale(1.1);
+}
+
+.play-pause-button:disabled {
+  background-color: #444;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.nav-button {
+  padding: 8px;
+  background-color: #646cff;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.nav-button:hover {
+  background-color: #535bf2;
+  transform: scale(1.1);
+}
+
+.nav-button:disabled {
+  background-color: #444;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.file-info {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: rgba(30, 30, 40, 0.5);
+  border-radius: 8px;
+}
+
+/* 添加歌单列表样式 */
+.demo-music-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+  text-align: left;
+}
+
+.demo-music-list li {
+  padding: 6px 10px;
+  margin: 5px 0;
+  border-radius: 4px;
+  background-color: rgba(30, 30, 40, 0.5);
+  transition: all 0.3s ease;
+}
+
+.demo-music-list li.active {
+  background-color: rgba(100, 108, 255, 0.3);
+  font-weight: bold;
+}

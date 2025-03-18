@@ -102,7 +102,7 @@ export class AudioAnalyzer {
       // 创建音频元素
       this.audioElement = new Audio();
       this.audioElement.src = audioUrl;
-      this.audioElement.loop = true;
+      this.audioElement.loop = false;
       
       // 创建音频源
       this.source = this.audioContext.createMediaElementSource(this.audioElement);
@@ -341,6 +341,14 @@ export class AudioAnalyzer {
    */
   getIsPaused(): boolean {
     return this.isPaused;
+  }
+  
+  /**
+   * 获取当前音频元素
+   * @returns 当前音频元素或null
+   */
+  getAudioElement(): HTMLAudioElement | null {
+    return this.audioElement;
   }
   
   /**

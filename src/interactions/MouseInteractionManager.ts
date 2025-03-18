@@ -117,6 +117,9 @@ export class MouseInteractionManager {
     
     // 3. 调整爆炸效果强度，使其在移动设备上更明显
     this.adjustExplosionForMobile();
+    
+    // 4. 调整移动端相机参数
+    this.adjustMobileCamera();
   }
   
   /**
@@ -169,6 +172,32 @@ export class MouseInteractionManager {
   }
   
   /**
+   * 调整移动端相机参数
+   */
+  private adjustMobileCamera(): void {
+    if (!this.isMobileDevice || !this.camera) return;
+    
+    // 调整相机视场角（FOV）为75度
+    this.camera.fov = 75;
+    
+    // 设置相机初始位置
+    const maxHeight = 55; // 使用最大高度作为初始高度
+    const horizontalDistance = 50; // 设置固定的水平距离为50
+    
+    // 设置相机位置，使其向目标点倾斜
+    this.camera.position.set(horizontalDistance, 0, maxHeight);
+    this.camera.lookAt(0, 0, 0);
+    
+    // 更新投影矩阵
+    this.camera.updateProjectionMatrix();
+    
+    console.log('移动端相机参数已调整：FOV =', this.camera.fov, 
+      'Position =', this.camera.position.toArray(),
+      'Height =', maxHeight,
+      'HorizontalDistance =', horizontalDistance);
+  }
+  
+  /**
    * 添加事件监听器
    */
   private addEventListeners(): void {
@@ -217,11 +246,59 @@ export class MouseInteractionManager {
   }
   
   /**
+   * 更新指针（鼠标/触摸）位置
+   */
+  private updatePointerPosition(clientX: number, clientY: number): void {
+    // 获取元素的边界矩形
+    const rect = this.domElement.getBoundingClientRect();
+    
+    if (this.isMobileDevice) {
+      // 移动端特定的坐标计算
+      const dpr = window.devicePixelRatio || 1;
+      const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      
+      // 计算实际的触摸点位置，考虑视口偏移和设备像素比
+      const x = ((clientX + scrollLeft - rect.left) / rect.width);
+      const y = ((clientY + scrollTop - rect.top) / rect.height);
+      
+      // 转换为归一化设备坐标 (-1 到 1)
+      this.mouse.x = x * 2 - 1;
+      this.mouse.y = -(y * 2 - 1);
+      
+      // 调试日志
+      console.log(`Mobile touch position - 
+        Screen: (${clientX}, ${clientY}), 
+        Normalized: (${this.mouse.x.toFixed(3)}, ${this.mouse.y.toFixed(3)})`);
+    } else {
+      // 保持桌面端原有的计算方式不变
+      this.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      this.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    }
+    
+    // 更新射线
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    
+    // 计算射线与地平面的交点
+    const intersects = this.raycaster.ray.intersectPlane(this.groundPlane, this.mouseWorldPos);
+    
+    if (intersects) {
+      this.isMouseOverGrid = true;
+      // 触发鼓包效果更新
+      this.updateBulgeEffect();
+    } else {
+      this.isMouseOverGrid = false;
+    }
+  }
+  
+  /**
    * 处理触摸开始事件
    */
   private handleTouchStart(event: TouchEvent): void {
     // 阻止默认行为，防止页面滚动
     event.preventDefault();
+    
+    if (!this.isMobileDevice) return; // 确保只在移动端处理触摸事件
     
     if (event.touches.length === 1) {
       // 单指触摸 - 模拟鼠标悬停
@@ -229,7 +306,11 @@ export class MouseInteractionManager {
       
       // 获取触摸点位置
       const touch = event.touches[0];
-      this.updatePointerPosition(touch.clientX, touch.clientY);
+      const touchX = touch.pageX;
+      const touchY = touch.pageY;
+      
+      // 更新触摸点位置
+      this.updatePointerPosition(touchX, touchY);
       
       // 检测是否为双击（两次触摸间隔小于阈值）
       const currentTime = Date.now();
@@ -242,9 +323,8 @@ export class MouseInteractionManager {
       this.lastTouchTime = currentTime;
     } else if (event.touches.length === 2) {
       // 双指触摸 - 用于缩放
-      // 计算两个触摸点之间的距离作为初始缩放值
-      const dx = event.touches[0].clientX - event.touches[1].clientX;
-      const dy = event.touches[0].clientY - event.touches[1].clientY;
+      const dx = event.touches[0].pageX - event.touches[1].pageX;
+      const dy = event.touches[0].pageY - event.touches[1].pageY;
       this.touchZoomStart = Math.sqrt(dx * dx + dy * dy);
       this.touchZoomCurrent = this.touchZoomStart;
     }
@@ -254,17 +334,18 @@ export class MouseInteractionManager {
    * 处理触摸移动事件
    */
   private handleTouchMove(event: TouchEvent): void {
-    // 阻止默认行为，防止页面滚动
     event.preventDefault();
     
+    if (!this.isMobileDevice) return; // 确保只在移动端处理触摸事件
+    
     if (event.touches.length === 1 && this.isTouching) {
-      // 单指移动 - 模拟鼠标移动
+      // 单指触摸移动 - 更新鼓包效果
       const touch = event.touches[0];
-      this.updatePointerPosition(touch.clientX, touch.clientY);
+      this.updatePointerPosition(touch.pageX, touch.pageY);
     } else if (event.touches.length === 2) {
       // 双指移动 - 处理缩放
-      const dx = event.touches[0].clientX - event.touches[1].clientX;
-      const dy = event.touches[0].clientY - event.touches[1].clientY;
+      const dx = event.touches[0].pageX - event.touches[1].pageX;
+      const dy = event.touches[0].pageY - event.touches[1].pageY;
       this.touchZoomCurrent = Math.sqrt(dx * dx + dy * dy);
       
       // 计算缩放比例变化
@@ -280,7 +361,15 @@ export class MouseInteractionManager {
           Math.min(this.MAX_ZOOM, currentZ + zoomDelta * this.ZOOM_SPEED * speedFactor)
         );
         
-        this.camera.position.z = newZ;
+        // 保存当前的水平位置
+        const currentX = this.camera.position.x;
+        const currentY = this.camera.position.y;
+        
+        // 更新相机位置，保持水平位置不变
+        this.camera.position.set(currentX, currentY, newZ);
+        
+        // 确保相机始终看向原点
+        this.camera.lookAt(0, 0, 0);
         
         // 更新缩放起始值，使缩放更平滑
         this.touchZoomStart = this.touchZoomCurrent;
@@ -342,30 +431,6 @@ export class MouseInteractionManager {
       } catch (e) {
         console.log('振动API不可用或被禁用');
       }
-    }
-  }
-  
-  /**
-   * 更新指针（鼠标/触摸）位置
-   */
-  private updatePointerPosition(clientX: number, clientY: number): void {
-    // 计算指针在归一化设备坐标中的位置
-    const rect = this.domElement.getBoundingClientRect();
-    this.mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-    
-    // 更新射线
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    
-    // 计算射线与地平面的交点
-    const intersects = this.raycaster.ray.intersectPlane(this.groundPlane, this.mouseWorldPos);
-    
-    if (intersects) {
-      this.isMouseOverGrid = true;
-      // 触发鼓包效果更新
-      this.updateBulgeEffect();
-    } else {
-      this.isMouseOverGrid = false;
     }
   }
   
@@ -486,14 +551,26 @@ export class MouseInteractionManager {
     const delta = event.deltaY > 0 ? 1 : -1;
     const currentZ = this.camera.position.z;
     
+    // 为移动设备调整缩放范围
+    const minZoom = this.isMobileDevice ? 25 : this.MIN_ZOOM;
+    const maxZoom = this.isMobileDevice ? 55 : this.MAX_ZOOM;
+    
     const speedFactor = Math.max(1.0, currentZ / 20);
     
     const newZ = Math.max(
-      this.MIN_ZOOM,
-      Math.min(this.MAX_ZOOM, currentZ + delta * this.ZOOM_SPEED * speedFactor)
+      minZoom,
+      Math.min(maxZoom, currentZ + delta * this.ZOOM_SPEED * speedFactor)
     );
     
-    this.camera.position.z = newZ;
+    // 保存当前的水平位置
+    const currentX = this.camera.position.x;
+    const currentY = this.camera.position.y;
+    
+    // 更新相机位置，保持水平位置不变
+    this.camera.position.set(currentX, currentY, newZ);
+    
+    // 确保相机始终看向原点
+    this.camera.lookAt(0, 0, 0);
   }
   
   /**

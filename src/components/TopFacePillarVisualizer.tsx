@@ -122,7 +122,7 @@ const TopFacePillarVisualizer: React.FC = () => {
   
   // 使用鼠标交互 Hook
   useMouseInteraction(
-    containerRef as React.RefObject<HTMLElement>,
+    containerRef as React.RefObject<HTMLDivElement>,
     sceneRef,
     cameraRef,
     rendererRef

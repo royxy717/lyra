@@ -7,7 +7,7 @@ import { MouseInteractionManager } from '../interactions/MouseInteractionManager
  * 当前版本仅实现滚轮缩放功能
  */
 export function useMouseInteraction(
-  containerRef: React.RefObject<HTMLElement>,
+  containerRef: React.RefObject<HTMLDivElement>,
   sceneRef: React.RefObject<Scene | null>,
   cameraRef: React.RefObject<PerspectiveCamera | null>,
   rendererRef: React.RefObject<WebGLRenderer | null>

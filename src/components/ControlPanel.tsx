@@ -10,7 +10,7 @@ interface MusicInfo {
 
 interface ControlPanelProps {
   onSourceChange: () => void;
-  visualizerRef: React.RefObject<HTMLDivElement>;
+  visualizerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerRef }) => {
@@ -253,9 +253,12 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
             playNextDemo();
           };
         }
+      } else {
+        throw new Error('无法加载下一首示例音频');
       }
-    } catch (error: any) {
-      console.error('切换下一首示例音乐时出错:', error);
+    } catch (error) {
+      console.error('播放下一首示例音乐时出错:', error);
+      setError('无法加载下一首示例音频');
     }
   };
   
@@ -279,55 +282,44 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
             playNextDemo();
           };
         }
-      }
-    } catch (error: any) {
-      console.error('切换上一首示例音乐时出错:', error);
-    }
-  };
-  
-  // 触发文件选择对话框
-  const triggerFileInput = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-  
-  // 切换播放/暂停
-  const togglePlayPause = () => {
-    if (audioAnalyzer.getSourceType() === 'file') {
-      const newPauseState = audioAnalyzer.togglePlayPause();
-      setIsPaused(newPauseState);
-    }
-  };
-  
-  // 切换全屏
-  const toggleFullscreen = () => {
-    if (!visualizerRef || !visualizerRef.current) return;
-    
-    try {
-      if (!document.fullscreenElement) {
-        // 进入全屏
-        visualizerRef.current.requestFullscreen().catch(err => {
-          console.error(`无法进入全屏模式: ${err.message}`);
-        });
       } else {
-        // 退出全屏
-        document.exitFullscreen();
+        throw new Error('无法加载上一首示例音频');
       }
     } catch (error) {
-      console.error('切换全屏时出错:', error);
+      console.error('播放上一首示例音乐时出错:', error);
+      setError('无法加载上一首示例音频');
     }
   };
   
-  // 添加点击播放指定歌曲的函数
-  const playSelectedSong = async (index: number) => {
-    if (index === currentDemoIndex && audioSource === 'demo') {
-      // 如果点击当前播放的歌曲，则切换播放/暂停状态
-      togglePlayPause();
-      return;
-    }
+  // 触发文件选择
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+  
+  // 切换播放/暂停状态
+  const togglePlayPause = () => {
+    audioAnalyzer.togglePlayPause();
+  };
+  
+  // 切换全屏状态
+  const toggleFullscreen = () => {
+    if (!visualizerRef.current) return;
     
-    // 如果正在播放其他歌曲，先停止
+    if (!document.fullscreenElement) {
+      visualizerRef.current.requestFullscreen().catch((err) => {
+        console.error('无法进入全屏模式:', err);
+      });
+    } else {
+      document.exitFullscreen().catch((err) => {
+        console.error('无法退出全屏模式:', err);
+      });
+    }
+  };
+  
+  // 播放选中的示例音乐
+  const playSelectedSong = async (index: number) => {
+    if (index === currentDemoIndex) return;
+    
     if (audioAnalyzer.getAudioElement()) {
       audioAnalyzer.getAudioElement()!.pause();
       audioAnalyzer.cleanup();
@@ -338,32 +330,30 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
     try {
       const success = await audioAnalyzer.initializeWithAudio(demoMusicList[index].file);
       if (success) {
-        setAudioSource('demo');
         setFileName(`${demoMusicList[index].artist} - ${demoMusicList[index].title}`);
-        setIsPaused(false);
-        onSourceChange();
-        
         const audioElement = audioAnalyzer.getAudioElement();
         if (audioElement) {
           audioElement.onended = () => {
             playNextDemo();
           };
         }
+      } else {
+        throw new Error('无法加载选中的示例音频');
       }
-    } catch (error: any) {
-      console.error('播放选中歌曲时出错:', error);
+    } catch (error) {
+      console.error('播放选中的示例音乐时出错:', error);
+      setError('无法加载选中的示例音频');
     }
   };
   
   return (
     <div className="control-panel">
-      <div className="source-selector">
-        <h3>音频源</h3>
+      <div className="source-controls">
         <div className="source-buttons">
           <button 
             className={`source-button ${audioSource === 'mic' ? 'active' : ''}`}
             onClick={switchToMic}
-            disabled={isLoading || audioSource === 'mic'}
+            disabled={isLoading}
           >
             麦克风
           </button>
@@ -482,4 +472,4 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
   );
 };
 
-export default ControlPanel; 
+export default ControlPanel;

@@ -166,7 +166,10 @@ const PillarVisualizer: React.FC = () => {
             className="pillar-visualizer-container"
           >
           </div>
-          <ControlPanel onSourceChange={handleSourceChange} />
+          <ControlPanel 
+            onSourceChange={handleSourceChange} 
+            visualizerRef={containerRef}
+          />
         </>
       )}
     </div>

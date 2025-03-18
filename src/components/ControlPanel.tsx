@@ -107,11 +107,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
       setIsLoading(true);
       try {
         const demoFiles = [
-          '/demo_music/demo1.mp3',
-          '/demo_music/demo2.mp3',
-          '/demo_music/demo3.mp3',
-          '/demo_music/demo4.mp3',
-          '/demo_music/demo5.mp3'
+          './demo_music/demo1.mp3',
+          './demo_music/demo2.mp3',
+          './demo_music/demo3.mp3',
+          './demo_music/demo4.mp3',
+          './demo_music/demo5.mp3'
         ];
 
         const musicInfoList = await Promise.all(
@@ -119,8 +119,10 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onSourceChange, visualizerR
         );
 
         setDemoMusicList(musicInfoList);
+        console.log('已加载示例音乐列表:', musicInfoList);
       } catch (error) {
         console.error('加载示例音乐元数据时出错:', error);
+        setError('无法加载示例音乐列表');
       } finally {
         setIsLoading(false);
       }
